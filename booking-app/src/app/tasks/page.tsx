@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useTaskStore } from '@/store/task-store';
+import { useTaskCompat } from '@/hooks/compat/useTaskCompat';
 import { TaskStatus, TaskPriority, TaskType } from '@/types/task';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
@@ -35,7 +35,7 @@ function TasksContent() {
     assignTask,
     completeTask,
     getTaskSummary,
-  } = useTaskStore();
+  } = useTaskCompat();
 
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority | 'all'>('all');

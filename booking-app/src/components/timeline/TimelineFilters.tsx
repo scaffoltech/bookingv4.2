@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useContactStore } from '@/store/contact-store';
+import { useContactCompat } from '@/hooks/compat/useContactCompat';
 import { TravelQuote } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -41,7 +41,7 @@ export function TimelineFilters({
   onClearFilters,
   itemCount,
 }: TimelineFiltersProps) {
-  const { contacts } = useContactStore();
+  const { contacts } = useContactCompat();
   const [isExpanded, setIsExpanded] = useState(true);
 
   const selectedContact = contacts.find(c => c.id === selectedContactId);

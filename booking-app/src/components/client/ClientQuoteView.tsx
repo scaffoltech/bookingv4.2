@@ -34,6 +34,7 @@ interface ClientQuoteViewProps {
   agentName?: string;
   agentEmail?: string;
   onQuoteAction?: (action: 'accept' | 'reject' | 'message' | 'payment') => void;
+  clientToken?: string;
 }
 
 interface PaymentConfirmationData {
@@ -53,7 +54,8 @@ export function ClientQuoteView({
 }: ClientQuoteViewProps) {
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [quoteStatus, setQuoteStatus] = useState(quote.status);
+  // 'confirmed' is a local UI-only sentinel (post-payment), not a DB status value.
+  const [quoteStatus, setQuoteStatus] = useState<TravelQuote['status'] | 'confirmed'>(quote.status);
   const [paymentInfo, setPaymentInfo] = useState<PaymentConfirmationData | null>(null);
 
   const getItemIcon = (type: string) => {

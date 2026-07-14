@@ -1,278 +1,210 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { useQuoteStore } from '@/store/quote-store';
-import { useContactStore } from '@/store/contact-store';
-import { TravelQuote } from '@/types';
-import { QuoteCard } from './QuoteCard';
-import { QuoteFilters, QuoteFilterOptions } from './QuoteFilters';
-import { QuoteStats } from './QuoteStats';
-import { Button } from '@/components/ui/button';
-import { Plus, FileText, BarChart3, TrendingUp, Users, DollarSign } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import moment from 'moment';
+import { useRouter } from 'next/navigation';
+import { useQuoteCompat } from '@/hooks/compat/useQuoteCompat';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { TravelQuote } from '@/types';
+
+const fmt = (n: number) => '$' + Math.round(n).toLocaleString('en-US');
+
+const gradients = [
+  'from-blue-500 to-indigo-600',
+  'from-teal-500 to-emerald-600',
+  'from-orange-400 to-rose-500',
+  'from-purple-500 to-fuchsia-600',
+];
+
+function nights(q: TravelQuote) {
+  const s = new Date(q.travelDates.start).getTime();
+  const e = new Date(q.travelDates.end).getTime();
+  const n = Math.round((e - s) / 86400000);
+  return n > 0 ? `${n} night${n === 1 ? '' : 's'}` : 'dates pending';
+}
+
+function dateRange(q: TravelQuote) {
+  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+  const s = new Date(q.travelDates.start);
+  const e = new Date(q.travelDates.end);
+  if (isNaN(s.getTime())) return 'dates pending';
+  return `${s.toLocaleDateString('en-US', opts)}–${e.toLocaleDateString('en-US', opts)}`;
+}
+
+export function shortId(q: TravelQuote) {
+  return '#' + q.id.replace(/[^a-zA-Z0-9]/g, '').slice(-4).toUpperCase();
+}
+
+const statusPill: Record<TravelQuote['status'], { label: string; cls: string }> = {
+  draft: { label: 'DRAFT', cls: 'text-gray-500 bg-gray-100' },
+  sent: { label: 'SENT', cls: 'text-blue-600 bg-blue-50' },
+  accepted: { label: 'ACCEPTED', cls: 'text-green-600 bg-green-50' },
+  rejected: { label: 'REJECTED', cls: 'text-red-600 bg-red-50' },
+  booked: { label: 'BOOKED', cls: 'text-emerald-700 bg-emerald-100' },
+  cancelled: { label: 'CANCELLED', cls: 'text-gray-500 bg-gray-100' },
+};
+
+const statusLine: Record<TravelQuote['status'], { text: string; cls: string }> = {
+  draft: { text: 'Draft — continue with the agent →', cls: 'text-blue-600' },
+  sent: { text: 'Sent — awaiting client', cls: 'text-gray-500' },
+  accepted: { text: '✓ Accepted — docs sent', cls: 'text-green-600' },
+  rejected: { text: 'Rejected', cls: 'text-red-600' },
+  booked: { text: '✓ Booked — confirmed with suppliers', cls: 'text-emerald-700' },
+  cancelled: { text: 'Cancelled', cls: 'text-gray-500' },
+};
 
 export function QuotesDashboard() {
-  const { quotes, searchQuotes, getQuotesByStatus, getQuotesByDateRange } = useQuoteStore();
-  const { contacts } = useContactStore();
-  const [filters, setFilters] = useState<QuoteFilterOptions>({
-    searchQuery: '',
-    status: 'all',
-    dateRange: 'all',
-    sortBy: 'created-desc',
-  });
-  const [isHydrated, setIsHydrated] = useState(false);
+  const router = useRouter();
+  const { quotes } = useQuoteCompat();
+  const { profile: user } = useAuth();
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
 
-  // Handle hydration
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const firstName = (user?.full_name || 'there').split(' ')[0];
 
-  // Filter and sort quotes
-  const filteredQuotes = useMemo(() => {
-    if (!isHydrated) return [];
+  const now = Date.now();
+  const weekOut = now + 7 * 86400000;
+  const departing = quotes.filter((q) => {
+    const s = new Date(q.travelDates.start).getTime();
+    return q.status === 'accepted' && s >= now && s <= weekOut;
+  }).length;
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+  const bookedThisMonth = quotes
+    .filter((q) => q.status === 'accepted' && new Date(q.createdAt as unknown as string) >= monthStart)
+    .reduce((a, q) => a + q.totalCost, 0);
 
-    let result = [...quotes];
+  const inMotion = [...quotes]
+    .filter((q) => q.status !== 'rejected')
+    .sort((a, b) => new Date(a.travelDates.start).getTime() - new Date(b.travelDates.start).getTime())
+    .slice(0, 3);
 
-    // Apply search filter
-    if (filters.searchQuery) {
-      result = searchQuotes(filters.searchQuery);
-    }
+  const ledger = [...quotes]
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt as unknown as string).getTime() -
+        new Date(a.createdAt as unknown as string).getTime()
+    )
+    .slice(0, 8);
 
-    // Apply status filter
-    if (filters.status !== 'all') {
-      result = result.filter(quote => quote.status === filters.status);
-    }
-
-    // Apply date range filter
-    if (filters.dateRange !== 'all') {
-      const now = moment();
-      let startDate: moment.Moment;
-      
-      switch (filters.dateRange) {
-        case 'last-week':
-          startDate = now.clone().subtract(1, 'week');
-          break;
-        case 'last-month':
-          startDate = now.clone().subtract(1, 'month');
-          break;
-        case 'last-3-months':
-          startDate = now.clone().subtract(3, 'months');
-          break;
-        default:
-          startDate = moment(0); // Beginning of time
-      }
-      
-      result = result.filter(quote => 
-        moment(quote.createdAt).isAfter(startDate)
-      );
-    }
-
-    // Apply sorting
-    result.sort((a, b) => {
-      switch (filters.sortBy) {
-        case 'created-asc':
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        case 'created-desc':
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        case 'amount-asc':
-          return a.totalCost - b.totalCost;
-        case 'amount-desc':
-          return b.totalCost - a.totalCost;
-        case 'travel-date-asc':
-          return new Date(a.travelDates.start).getTime() - new Date(b.travelDates.start).getTime();
-        case 'travel-date-desc':
-          return new Date(b.travelDates.start).getTime() - new Date(a.travelDates.start).getTime();
-        default:
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      }
-    });
-
-    return result;
-  }, [quotes, filters, searchQuotes, isHydrated]);
-
-  const handleFilterChange = (newFilters: QuoteFilterOptions) => {
-    setFilters(newFilters);
-  };
-
-  const handleQuoteAction = (action: string, quoteId: string) => {
-    // Handle quote actions like delete, duplicate, etc.
-    console.log(`${action} quote:`, quoteId);
-  };
-
-  if (!isHydrated) {
-    return (
-      <div className="space-y-8">
-        <div className="glass-card rounded-2xl p-8 text-center">
-          <div className="animate-pulse">
-            <div className="h-6 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-1/4 mx-auto mb-4"></div>
-            <div className="h-8 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-1/2 mx-auto"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Calculate dashboard stats
-  const totalQuoteValue = quotes.reduce((sum, quote) => sum + quote.totalCost, 0);
-  const activeQuotes = quotes.filter(q => q.status !== 'rejected').length;
-  const acceptedQuotes = quotes.filter(q => q.status === 'accepted').length;
-  const conversionRate = quotes.length > 0 ? (acceptedQuotes / quotes.length) * 100 : 0;
+  if (!hydrated) return null;
 
   return (
-    <div className="space-y-8">
-      {/* Quick Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="glass-card rounded-2xl p-6 hover-lift transition-smooth">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 mb-1">Total Quotes</p>
-              <p className="text-3xl font-bold text-gray-900">{quotes.length}</p>
-            </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
-              <FileText className="w-6 h-6 text-white" />
-            </div>
-          </div>
-        </div>
-
-        <div className="glass-card rounded-2xl p-6 hover-lift transition-smooth">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 mb-1">Total Quote Value</p>
-              <p className="text-3xl font-bold text-gray-900">${totalQuoteValue.toLocaleString()}</p>
-              <p className="text-xs text-gray-500 mt-1">All quotes combined</p>
-            </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-white" />
-            </div>
-          </div>
-        </div>
-
-        <div className="glass-card rounded-2xl p-6 hover-lift transition-smooth">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 mb-1">Active Quotes</p>
-              <p className="text-3xl font-bold text-gray-900">{activeQuotes}</p>
-            </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-white" />
-            </div>
-          </div>
-        </div>
-
-        <div className="glass-card rounded-2xl p-6 hover-lift transition-smooth">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 mb-1">Conversion</p>
-              <p className="text-3xl font-bold text-gray-900">{conversionRate.toFixed(1)}%</p>
-            </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl flex items-center justify-center">
-              <BarChart3 className="w-6 h-6 text-white" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Header Actions */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="px-8 py-6">
+      {/* Header */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">All Quotes</h2>
-          <p className="text-gray-600">Manage and track your travel quotes with advanced filtering</p>
+          <div className="text-2xl font-bold tracking-tight text-gray-900">
+            {greeting}, {firstName}
+          </div>
+          <div className="mt-0.5 text-[13px] text-gray-500">
+            {departing} trip{departing === 1 ? '' : 's'} departing this week ·{' '}
+            {fmt(bookedThisMonth)} booked this month
+          </div>
         </div>
-        <Link href="/quote-wizard">
-          <Button size="lg" className="shadow-soft hover-lift">
-            <Plus className="w-5 h-5 mr-2" />
-            Create New Quote
-          </Button>
+        <Link
+          href="/assistant"
+          className="flex w-[360px] max-w-full cursor-pointer items-center gap-2 rounded-[14px] bg-gray-900 py-1.5 pl-[18px] pr-1.5 shadow-[0_8px_24px_rgba(17,24,39,.2)] transition-shadow hover:shadow-[0_12px_28px_rgba(17,24,39,.3)]"
+        >
+          <span className="flex-1 text-[13px] text-gray-400">
+            Ask the agent — &ldquo;plan Maui for the Smiths&rdquo;
+          </span>
+          <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-blue-600 font-bold text-white">
+            ✦
+          </span>
         </Link>
       </div>
 
-      {/* Statistics */}
-      <QuoteStats />
-
-      {/* Filters */}
-      <div className="glass-card rounded-2xl p-6">
-        <QuoteFilters
-          onFilterChange={handleFilterChange}
-          totalCount={quotes.length}
-          filteredCount={filteredQuotes.length}
-        />
+      {/* Trips in motion */}
+      <div className="mb-2.5 mt-6 text-xs font-bold tracking-[.08em] text-gray-500">
+        TRIPS IN MOTION
       </div>
-
-      {/* Quotes Grid */}
-      {filteredQuotes.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredQuotes.map((quote) => (
-            <QuoteCard
-              key={quote.id}
-              quote={quote}
-              onDelete={(id) => handleQuoteAction('delete', id)}
-              onDuplicate={(id) => handleQuoteAction('duplicate', id)}
-              onStatusChange={(id, status) => handleQuoteAction('status-change', id)}
-            />
-          ))}
+      {inMotion.length === 0 ? (
+        <div className="rounded-[14px] border-2 border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-400">
+          No trips yet —{' '}
+          <Link href="/assistant" className="font-semibold text-blue-600 hover:underline">
+            start one with the agent ✦
+          </Link>
         </div>
       ) : (
-        <div className="text-center py-16">
-          <div className="glass-card rounded-2xl p-12 max-w-lg mx-auto">
-            {quotes.length === 0 ? (
-              // No quotes at all
-              <div>
-                <div className="w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center mx-auto mb-6">
-                  <FileText className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">
-                  No quotes yet
-                </h3>
-                <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                  Start creating travel quotes for your clients. Use the quote wizard to build detailed itineraries with flights, hotels, and activities.
-                </p>
-                <Link href="/quote-wizard">
-                  <Button size="lg" className="shadow-soft hover-lift">
-                    <Plus className="w-5 h-5 mr-2" />
-                    Create Your First Quote
-                  </Button>
-                </Link>
-              </div>
-            ) : (
-              // No quotes match current filters
-              <div>
-                <div className="w-16 h-16 bg-gradient-to-br from-gray-400 to-gray-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                  <FileText className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">
-                  No quotes match your filters
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  Try adjusting your search criteria or clearing the active filters to see more quotes.
-                </p>
-                <Button 
-                  variant="outline" 
-                  size="lg"
-                  className="shadow-soft hover-lift"
-                  onClick={() => setFilters({
-                    searchQuery: '',
-                    status: 'all',
-                    dateRange: 'all',
-                    sortBy: 'created-desc',
-                  })}
+        <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))]">
+          {inMotion.map((q, i) => (
+            <div
+              key={q.id}
+              onClick={() => router.push(`/quotes/${q.id}`)}
+              className="cursor-pointer overflow-hidden rounded-[14px] border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-[0_6px_16px_rgba(0,0,0,.1)]"
+            >
+              <div
+                className={`relative flex h-[110px] items-center justify-center bg-gradient-to-br ${gradients[i % gradients.length]}`}
+              >
+                <span className="text-4xl font-bold text-white/30" aria-hidden>
+                  {q.title?.charAt(0)?.toUpperCase() || '✈'}
+                </span>
+                <span
+                  className={`absolute left-2.5 top-2.5 rounded-full px-2.5 py-[3px] text-[11px] font-bold ${
+                    q.status === 'draft'
+                      ? 'bg-gray-900/85 text-purple-300'
+                      : q.status === 'accepted'
+                        ? 'bg-gray-900/80 text-white'
+                        : 'bg-white/90 text-gray-700'
+                  }`}
                 >
-                  Clear All Filters
-                </Button>
+                  {q.status === 'draft' ? '✦ DRAFT' : q.status === 'accepted' ? 'CONFIRMED' : 'AWAITING CLIENT'}
+                </span>
               </div>
-            )}
-          </div>
+              <div className="px-4 pb-3.5 pt-3">
+                <div className="font-semibold text-gray-900">
+                  {q.title} · {q.customerName}
+                </div>
+                <div className="mt-0.5 text-xs text-gray-500">
+                  {nights(q)} · {dateRange(q)} · {fmt(q.totalCost)}
+                </div>
+                <div className={`mt-1.5 text-xs font-semibold ${statusLine[q.status].cls}`}>
+                  {statusLine[q.status].text}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Load More Button (for future pagination) */}
-      {filteredQuotes.length > 0 && filteredQuotes.length >= 12 && (
-        <div className="text-center">
-          <Button variant="outline" disabled>
-            Load More Quotes
-          </Button>
-        </div>
-      )}
+      {/* Quote ledger */}
+      <div className="mb-2.5 mt-5 text-xs font-bold tracking-[.08em] text-gray-500">
+        QUOTE LEDGER
+      </div>
+      <div className="overflow-hidden rounded-[14px] border border-gray-200 bg-white shadow-sm">
+        {ledger.length === 0 && (
+          <div className="p-6 text-center text-sm text-gray-400">
+            No quotes yet — they&apos;ll appear here as you build trips.
+          </div>
+        )}
+        {ledger.map((q, i) => (
+          <div
+            key={q.id}
+            onClick={() => router.push(`/quotes/${q.id}`)}
+            className={`grid cursor-pointer grid-cols-[80px_1.3fr_1.6fr_100px_120px] items-center gap-x-4 px-5 py-3 hover:bg-gray-50 ${
+              i < ledger.length - 1 ? 'border-b border-gray-100' : ''
+            }`}
+          >
+            <div className="font-semibold text-gray-900">{shortId(q)}</div>
+            <div className="truncate text-gray-900">{q.customerName}</div>
+            <div className="truncate text-[13px] text-gray-500">
+              {q.title} · {nights(q)} · {dateRange(q)}
+            </div>
+            <div className="font-semibold text-gray-900">{fmt(q.totalCost)}</div>
+            <div>
+              <span
+                className={`rounded-full px-2.5 py-[3px] text-[11px] font-bold ${statusPill[q.status].cls}`}
+              >
+                {statusPill[q.status].label}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useContactStore } from '@/store/contact-store';
+import { useContactCompat } from '@/hooks/compat/useContactCompat';
 import { Contact } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,7 @@ import { ContactCard } from './ContactCard';
 import { Plus, Search, Users, TrendingUp } from 'lucide-react';
 
 export function ContactList() {
-  const { contacts, searchContacts, deleteContact } = useContactStore();
+  const { contacts, searchContacts, deleteContact } = useContactCompat();
   const [searchQuery, setSearchQuery] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);

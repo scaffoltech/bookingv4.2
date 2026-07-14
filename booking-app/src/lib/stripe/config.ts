@@ -1,5 +1,6 @@
 import Stripe from 'stripe';
 import { PaymentSource } from '@/types/payment';
+import { TravelQuote, TravelItem } from '@/types';
 
 // Stripe client initialization (server-side only)
 let stripeInstance: Stripe | null = null;
@@ -69,9 +70,49 @@ export function calculatePlatformFee(amount: number, source: PaymentSource): num
 
 /**
  * Calculate deposit amount (30% of total by default)
+ * @deprecated Use calculateSmartDepositAmount() for new flows
  */
 export function calculateDepositAmount(totalAmount: number): number {
   const depositAmount = (totalAmount * STRIPE_CONFIG.defaultDepositPercentage) / 100;
+  return Math.max(depositAmount, STRIPE_CONFIG.minDepositAmount);
+}
+
+/**
+ * Smart deposit calculation based on quote composition.
+ * Deposit = sum of all flights + all non-refundable items.
+ * Fallback (no flights, no non-refundable): max(20% of total, profit + 10% of total).
+ * Floor at minDepositAmount ($50).
+ */
+export function calculateSmartDepositAmount(quote: TravelQuote): number {
+  const items = quote.items || [];
+
+  // Sum cost of flights + non-refundable items
+  let criticalItemsCost = 0;
+  let hasCriticalItems = false;
+
+  for (const item of items) {
+    const isFlight = item.type === 'flight';
+    const isNonRefundable = item.cancellationPolicy?.nonRefundable === true;
+
+    if (isFlight || isNonRefundable) {
+      criticalItemsCost += item.price * (item.quantity || 1);
+      hasCriticalItems = true;
+    }
+  }
+
+  if (hasCriticalItems && criticalItemsCost > 0) {
+    return Math.max(criticalItemsCost, STRIPE_CONFIG.minDepositAmount);
+  }
+
+  // Fallback: no flights and no non-refundable items
+  const totalCost = quote.totalCost;
+  const totalSupplierCost = items.reduce((sum, item) => sum + (item.supplierCost || 0), 0);
+  const profit = totalCost - totalSupplierCost;
+
+  const twentyPercent = totalCost * 0.20;
+  const profitPlusTenPercent = profit + totalCost * 0.10;
+
+  const depositAmount = Math.max(twentyPercent, profitPlusTenPercent);
   return Math.max(depositAmount, STRIPE_CONFIG.minDepositAmount);
 }
 

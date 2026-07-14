@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useExpenseStore } from '@/store/expense-store';
-import { useContactStore } from '@/store/contact-store';
+import { useExpenseCompat } from '@/hooks/compat/useExpenseCompat';
+import { useContactCompat } from '@/hooks/compat/useContactCompat';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,8 +32,8 @@ export function AddExpense({ onSuccess }: AddExpenseProps) {
     notes: '',
   });
 
-  const createExpense = useExpenseStore((state) => state.createExpense);
-  const contacts = useContactStore((state) => state.contacts);
+  const { createExpense } = useExpenseCompat();
+  const { contacts } = useContactCompat();
 
   // Filter contacts to only show suppliers
   const suppliers = useMemo(
@@ -41,10 +41,11 @@ export function AddExpense({ onSuccess }: AddExpenseProps) {
     [contacts]
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    createExpense({
+    await createExpense({
+      title: formData.vendor || formData.description || formData.category,
       date: formData.date,
       category: formData.category,
       subcategory: formData.subcategory || undefined,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useContactStore } from '@/store/contact-store';
+import { useContactCompat } from '@/hooks/compat/useContactCompat';
 import { Contact } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,7 @@ interface ContactSelectionProps {
 }
 
 export function ContactSelection({ onContactSelect }: ContactSelectionProps) {
-  const { contacts, searchContacts } = useContactStore();
+  const { contacts, searchContacts } = useContactCompat();
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewContactForm, setShowNewContactForm] = useState(false);
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);

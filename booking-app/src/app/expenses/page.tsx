@@ -6,8 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useExpenseStore } from '@/store/expense-store';
-import { useAuthStore } from '@/store/auth-store';
+import { useExpenseCompat } from '@/hooks/compat/useExpenseCompat';
+import { useAuth } from '@/components/auth/AuthProvider';
 import { MainLayout } from '@/components/layout/MainLayout';
 import {
   CreditCard,
@@ -28,7 +28,7 @@ import {
 import { Expense, ExpenseCategory } from '@/types/financial';
 
 export default function ExpensesPage() {
-  const { user } = useAuthStore();
+  const { profile: user } = useAuth();
   const {
     expenses,
     createExpense,
@@ -41,7 +41,7 @@ export default function ExpensesPage() {
     getExpenseReport,
     searchExpenses,
     approveExpense
-  } = useExpenseStore();
+  } = useExpenseCompat();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<ExpenseCategory | 'all'>('all');
@@ -385,7 +385,7 @@ export default function ExpensesPage() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => approveExpense(expense.id, user?.name || 'Admin')}
+                                  onClick={() => approveExpense(expense.id, user?.full_name || 'Admin')}
                                 >
                                   <CheckCircle className="w-4 h-4" />
                                 </Button>

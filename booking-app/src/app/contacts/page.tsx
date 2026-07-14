@@ -1,562 +1,322 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useContactStore } from '@/store/contact-store';
-import { useQuoteStore } from '@/store/quote-store';
-import { useInvoiceStore } from '@/store/invoice-store';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { MainLayout } from '@/components/layout/MainLayout';
-import { Contact } from '@/types';
-import {
-  Users,
-  Search,
-  Plus,
-  Filter,
-  TrendingUp,
-  MapPin,
-  Phone,
-  Mail,
-  Calendar,
-  DollarSign,
-  Receipt,
-  Star,
-  MessageSquare,
-  Eye,
-  Edit,
-  MoreHorizontal,
-  Heart,
-  Award
-} from 'lucide-react';
+import { useContactCompat } from '@/hooks/compat/useContactCompat';
+import { useQuoteCompat } from '@/hooks/compat/useQuoteCompat';
+import { Contact, TravelQuote } from '@/types';
+import { Search } from 'lucide-react';
 
-export default function ContactsPage() {
-  const { contacts, addContact, updateContact, deleteContact, searchContacts } = useContactStore();
-  const { getQuotesByContact, quotes } = useQuoteStore();
-  const { getInvoicesByCustomer, invoices } = useInvoiceStore();
+const fmt = (n: number) => '$' + Math.round(n).toLocaleString('en-US');
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
-  const [filteredContacts, setFilteredContacts] = useState<Contact[]>([]);
-  const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
+const AVATARS = [
+  'bg-indigo-100 text-indigo-700',
+  'bg-pink-100 text-pink-700',
+  'bg-green-100 text-green-700',
+  'bg-amber-100 text-amber-700',
+  'bg-sky-100 text-sky-700',
+  'bg-purple-100 text-purple-700',
+];
 
-  useEffect(() => {
-    if (searchQuery.trim()) {
-      setFilteredContacts(searchContacts(searchQuery.trim()));
-    } else {
-      setFilteredContacts(contacts);
-    }
-  }, [contacts, searchQuery, searchContacts]);
+const THUMBS = [
+  'from-blue-500 to-indigo-600',
+  'from-teal-500 to-emerald-600',
+  'from-orange-400 to-rose-500',
+  'from-purple-500 to-fuchsia-600',
+];
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
-  };
+const initials = (c: Contact) =>
+  `${c.firstName?.[0] ?? c.name?.[0] ?? '?'}${c.lastName?.[0] ?? ''}`.toUpperCase();
 
-  const getCustomerValue = (contactId: string) => {
-    const customerInvoices = getInvoicesByCustomer(contactId);
-    // Only count paid invoices as actual customer value
-    return customerInvoices
-      .filter(invoice => invoice.status === 'paid')
-      .reduce((total, invoice) => total + invoice.total, 0);
-  };
+const avatarCls = (c: Contact) =>
+  AVATARS[(c.id.charCodeAt(0) + c.id.charCodeAt(c.id.length - 1)) % AVATARS.length];
 
-  const getCustomerOutstanding = (contactId: string) => {
-    const customerInvoices = getInvoicesByCustomer(contactId);
-    // Calculate outstanding amount from unpaid invoices
-    return customerInvoices
-      .filter(invoice => invoice.status !== 'paid' && invoice.status !== 'cancelled')
-      .reduce((total, invoice) => total + invoice.remainingAmount, 0);
-  };
+function quoteDates(q: TravelQuote) {
+  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+  const s = new Date(q.travelDates.start);
+  const e = new Date(q.travelDates.end);
+  if (isNaN(s.getTime())) return 'dates pending';
+  return `${s.toLocaleDateString('en-US', opts)}–${e.toLocaleDateString('en-US', opts)}`;
+}
 
-  const getCustomerBookings = (contactId: string) => {
-    return getQuotesByContact(contactId).filter(quote => quote.status === 'accepted').length;
-  };
+function prefChips(c: Contact): string[] {
+  const p = c.preferences;
+  if (!p) return [];
+  const chips: string[] = [];
+  (p.preferredAirlines ?? []).forEach((a) => chips.push(`✈ ${a}`));
+  if (p.seatPreference) chips.push(`💺 ${p.seatPreference} seat`);
+  (p.hotelPreference ?? []).forEach((h) => chips.push(`🏨 ${h}`));
+  if (p.budgetRange) chips.push(`Budget ${fmt(p.budgetRange.min)}–${fmt(p.budgetRange.max)}`);
+  return chips;
+}
 
-  const getLastBookingDate = (contactId: string) => {
-    const customerQuotes = getQuotesByContact(contactId);
-    const acceptedQuotes = customerQuotes.filter(quote => quote.status === 'accepted');
-    if (acceptedQuotes.length === 0) return null;
+function ContactsView() {
+  const router = useRouter();
+  const { contacts } = useContactCompat();
+  const { quotes, setCurrentQuote } = useQuoteCompat();
+  const [query, setQuery] = useState('');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-    const latest = acceptedQuotes.sort((a, b) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )[0];
-    return latest.createdAt;
-  };
-
-  const getCustomerTier = (value: number) => {
-    if (value >= 10000) return { tier: 'Platinum', color: 'text-purple-600', icon: Award };
-    if (value >= 5000) return { tier: 'Gold', color: 'text-yellow-600', icon: Star };
-    if (value >= 2000) return { tier: 'Silver', color: 'text-gray-600', icon: Heart };
-    return { tier: 'Bronze', color: 'text-orange-600', icon: Users };
-  };
-
-  const handleContactSelect = (contact: Contact) => {
-    setSelectedContact(contact);
-    setViewMode('detail');
-  };
-
-  const handleBackToList = () => {
-    setSelectedContact(null);
-    setViewMode('list');
-  };
-
-  // Customer 360 view component
-  const Customer360View = ({ contact }: { contact: Contact }) => {
-    const customerQuotes = getQuotesByContact(contact.id);
-    const customerInvoices = getInvoicesByCustomer(contact.id);
-    const totalValue = getCustomerValue(contact.id);
-    const outstandingAmount = getCustomerOutstanding(contact.id);
-    const totalBookings = getCustomerBookings(contact.id);
-    const lastBooking = getLastBookingDate(contact.id);
-    const tierInfo = getCustomerTier(totalValue);
-
-    const acceptedQuotes = customerQuotes.filter(q => q.status === 'accepted');
-    const pendingQuotes = customerQuotes.filter(q => q.status === 'sent');
-    const paidInvoices = customerInvoices.filter(i => i.status === 'paid');
-    const outstandingInvoices = customerInvoices.filter(i => i.status !== 'paid' && i.status !== 'cancelled');
-
-    return (
-      <div className="space-y-6">
-        {/* Customer Header */}
-        <div className="bg-white rounded-lg border p-6">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                {contact.firstName[0]}{contact.lastName[0]}
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">
-                  {contact.firstName} {contact.lastName}
-                </h2>
-                <div className="flex items-center gap-4 mt-2">
-                  <div className="flex items-center text-gray-600">
-                    <Mail className="w-4 h-4 mr-1" />
-                    {contact.email}
-                  </div>
-                  {contact.phone && (
-                    <div className="flex items-center text-gray-600">
-                      <Phone className="w-4 h-4 mr-1" />
-                      {contact.phone}
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 mt-3">
-                  <Badge className={`${tierInfo.color} bg-white border flex items-center gap-1`}>
-                    <tierInfo.icon className="w-3 h-3" />
-                    {tierInfo.tier} Customer
-                  </Badge>
-                  <Badge variant="secondary">
-                    {totalBookings} Bookings
-                  </Badge>
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline">
-                <MessageSquare className="w-4 h-4 mr-2" />
-                Message
-              </Button>
-              <Button variant="outline">
-                <Edit className="w-4 h-4 mr-2" />
-                Edit
-              </Button>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                New Quote
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Customer Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Lifetime Value</CardTitle>
-              <DollarSign className="h-4 w-4 text-gray-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {formatCurrency(totalValue)}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                From paid invoices
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Outstanding</CardTitle>
-              <Receipt className="h-4 w-4 text-gray-500" />
-            </CardHeader>
-            <CardContent>
-              <div className={`text-2xl font-bold ${outstandingAmount > 0 ? 'text-orange-600' : 'text-gray-600'}`}>
-                {formatCurrency(outstandingAmount)}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Unpaid invoices
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
-              <Calendar className="h-4 w-4 text-gray-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {totalBookings}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Outstanding</CardTitle>
-              <Receipt className="h-4 w-4 text-gray-500" />
-            </CardHeader>
-            <CardContent>
-              <div className={`text-2xl font-bold ${outstandingAmount > 0 ? 'text-orange-600' : 'text-gray-900'}`}>
-                {formatCurrency(outstandingAmount)}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Last Booking</CardTitle>
-              <Calendar className="h-4 w-4 text-gray-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-lg font-medium">
-                {lastBooking ? new Date(lastBooking).toLocaleDateString() : 'N/A'}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Booking History and Communications */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recent Bookings */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Bookings</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {acceptedQuotes.slice(0, 5).map((quote) => (
-                  <div key={quote.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <div className="font-medium">{quote.title}</div>
-                      <div className="text-sm text-gray-600">
-                        {new Date(quote.createdAt).toLocaleDateString()}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold">{formatCurrency(quote.totalCost)}</div>
-                      <Badge variant="outline" className="text-xs">
-                        {quote.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-                {acceptedQuotes.length === 0 && (
-                  <div className="text-center py-4 text-gray-500">
-                    No bookings yet
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Payment History */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Payment History</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {paidInvoices.slice(0, 5).map((invoice) => (
-                  <div key={invoice.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <div className="font-medium">#{invoice.invoiceNumber}</div>
-                      <div className="text-sm text-gray-600">
-                        Paid: {new Date(invoice.payments[0]?.processedDate || invoice.updatedAt).toLocaleDateString()}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold text-green-600">{formatCurrency(invoice.total)}</div>
-                      <Badge variant="success" className="text-xs">
-                        Paid
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-                {paidInvoices.length === 0 && (
-                  <div className="text-center py-4 text-gray-500">
-                    No payments yet
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Outstanding Items */}
-        {(pendingQuotes.length > 0 || outstandingInvoices.length > 0) && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {pendingQuotes.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-orange-600">Pending Quotes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {pendingQuotes.map((quote) => (
-                      <div key={quote.id} className="flex items-center justify-between p-3 border border-orange-200 rounded-lg bg-orange-50">
-                        <div>
-                          <div className="font-medium">{quote.title}</div>
-                          <div className="text-sm text-gray-600">
-                            Sent: {new Date(quote.createdAt).toLocaleDateString()}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-semibold">{formatCurrency(quote.totalCost)}</div>
-                          <Button size="sm" variant="outline" className="mt-1">
-                            Follow Up
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {outstandingInvoices.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-red-600">Outstanding Invoices</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {outstandingInvoices.map((invoice) => (
-                      <div key={invoice.id} className="flex items-center justify-between p-3 border border-red-200 rounded-lg bg-red-50">
-                        <div>
-                          <div className="font-medium">#{invoice.invoiceNumber}</div>
-                          <div className="text-sm text-gray-600">
-                            Due: {new Date(invoice.dueDate).toLocaleDateString()}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-semibold text-red-600">{formatCurrency(invoice.remainingAmount)}</div>
-                          <Button size="sm" variant="outline" className="mt-1">
-                            Send Reminder
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        )}
-      </div>
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return contacts.filter(
+      (c) => !q || c.name?.toLowerCase().includes(q) || c.email?.toLowerCase().includes(q)
     );
+  }, [contacts, query]);
+
+  const selected = filtered.find((c) => c.id === selectedId) ?? filtered[0] ?? null;
+
+  const contactQuotes = useMemo(
+    () =>
+      selected
+        ? quotes
+            .filter((q) => q.contactId === selected.id || q.customerId === selected.id)
+            .sort(
+              (a, b) =>
+                new Date(b.createdAt as unknown as string).getTime() -
+                new Date(a.createdAt as unknown as string).getTime()
+            )
+        : [],
+    [quotes, selected]
+  );
+
+  const currentTrip = contactQuotes.find((q) => q.status === 'draft' || q.status === 'sent') ?? null;
+  const history = contactQuotes.filter((q) => q !== currentTrip);
+  const lifetime = contactQuotes
+    .filter((q) => q.status === 'accepted')
+    .reduce((a, q) => a + q.totalCost, 0);
+
+  const continueTrip = () => {
+    if (currentTrip) setCurrentQuote(currentTrip);
+    router.push('/assistant');
   };
+
+  const checklist = currentTrip
+    ? [
+        { label: 'Flights', done: currentTrip.items.some((i) => i.type === 'flight') },
+        { label: 'Stay', done: currentTrip.items.some((i) => i.type === 'hotel') },
+        {
+          label: 'Activities',
+          done: currentTrip.items.some((i) => i.type === 'activity' || i.type === 'transfer'),
+        },
+        { label: 'Send to client', done: currentTrip.status === 'sent' },
+      ]
+    : [];
 
   return (
-    <MainLayout>
-        <div className="container mx-auto px-4 py-8">
-          {viewMode === 'detail' && selectedContact ? (
-            <>
-              <div className="flex items-center mb-6">
-                <Button variant="ghost" onClick={handleBackToList} className="mr-4">
-                  ← Back to Contacts
-                </Button>
-                <h1 className="text-3xl font-bold text-gray-900">Customer Profile</h1>
-              </div>
-              <Customer360View contact={selectedContact} />
-            </>
-          ) : (
-            <>
-              {/* Header */}
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900">Customer Relationship Management</h1>
-                  <p className="text-gray-600 mt-2">
-                    Manage your travel clients and build lasting relationships
-                  </p>
-                </div>
-
-                <Button className="mt-4 md:mt-0">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Contact
-                </Button>
-              </div>
-
-              {/* Summary Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
-                    <Users className="h-4 w-4 text-gray-500" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{contacts.length}</div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Active Customers</CardTitle>
-                    <TrendingUp className="h-4 w-4 text-gray-500" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {contacts.filter(c => getCustomerBookings(c.id) > 0).length}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-                    <DollarSign className="h-4 w-4 text-gray-500" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-green-600">
-                      {formatCurrency(contacts.reduce((sum, c) => sum + getCustomerValue(c.id), 0))}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Avg Customer Value</CardTitle>
-                    <Award className="h-4 w-4 text-gray-500" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {formatCurrency(
-                        contacts.length > 0
-                          ? contacts.reduce((sum, c) => sum + getCustomerValue(c.id), 0) / contacts.length
-                          : 0
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Search and Filters */}
-              <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input
-                    placeholder="Search contacts by name, email..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-
-              {/* Contacts List */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Contacts ({filteredContacts.length})</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {filteredContacts.length === 0 ? (
-                    <div className="text-center py-8">
-                      <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No contacts found</h3>
-                      <p className="text-gray-600">
-                        {searchQuery ? 'Try adjusting your search criteria.' : 'Add your first contact to get started.'}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {filteredContacts.map((contact) => {
-                        const totalValue = getCustomerValue(contact.id);
-                        const totalBookings = getCustomerBookings(contact.id);
-                        const tierInfo = getCustomerTier(totalValue);
-                        const lastBooking = getLastBookingDate(contact.id);
-
-                        return (
-                          <Card key={contact.id} className="hover:shadow-md transition-shadow cursor-pointer">
-                            <CardContent className="p-6" onClick={() => handleContactSelect(contact)}>
-                              <div className="flex items-start justify-between mb-4">
-                                <div className="flex items-center space-x-3">
-                                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-                                    {contact.firstName[0]}{contact.lastName[0]}
-                                  </div>
-                                  <div>
-                                    <div className="font-semibold text-gray-900">
-                                      {contact.firstName} {contact.lastName}
-                                    </div>
-                                    <div className="text-sm text-gray-600">{contact.email}</div>
-                                  </div>
-                                </div>
-                                <Button size="sm" variant="ghost" onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleContactSelect(contact);
-                                }}>
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                              </div>
-
-                              <div className="space-y-2">
-                                <div className="flex justify-between items-center">
-                                  <span className="text-sm text-gray-600">Customer Value</span>
-                                  <span className="font-semibold text-green-600">{formatCurrency(totalValue)}</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                  <span className="text-sm text-gray-600">Bookings</span>
-                                  <span className="font-semibold">{totalBookings}</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                  <span className="text-sm text-gray-600">Last Booking</span>
-                                  <span className="text-sm">{lastBooking ? new Date(lastBooking).toLocaleDateString() : 'Never'}</span>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center justify-between mt-4">
-                                <Badge className={`${tierInfo.color} bg-white border flex items-center gap-1`}>
-                                  <tierInfo.icon className="w-3 h-3" />
-                                  {tierInfo.tier}
-                                </Badge>
-                                <div className="flex gap-1">
-                                  <Button size="sm" variant="ghost">
-                                    <Mail className="w-4 h-4" />
-                                  </Button>
-                                  <Button size="sm" variant="ghost">
-                                    <Phone className="w-4 h-4" />
-                                  </Button>
-                                  <Button size="sm" variant="ghost">
-                                    <MoreHorizontal className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </>
-          )}
+    <div className="flex min-h-screen">
+      {/* List pane */}
+      <div className="flex w-[280px] shrink-0 flex-col border-r border-gray-200 bg-white">
+        <div className="px-[18px] pb-3 pt-[18px]">
+          <div className="text-lg font-bold tracking-tight text-gray-900">Contacts</div>
+          <div className="mt-2.5 flex items-center gap-2 rounded-[10px] border border-gray-200 px-3 py-2">
+            <Search className="h-3.5 w-3.5 text-gray-400" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search clients…"
+              className="min-w-0 flex-1 border-0 bg-transparent text-[13px] text-gray-900 outline-none placeholder:text-gray-400"
+            />
+          </div>
         </div>
-    </MainLayout>
+        <div className="flex-1 overflow-y-auto">
+          {filtered.length === 0 && (
+            <div className="px-[18px] py-6 text-[13px] text-gray-400">No contacts yet.</div>
+          )}
+          {filtered.map((c) => {
+            const isSel = selected?.id === c.id;
+            const latest = quotes.find((q) => q.contactId === c.id || q.customerId === c.id);
+            return (
+              <button
+                key={c.id}
+                onClick={() => setSelectedId(c.id)}
+                className={`flex w-full items-center gap-3 px-[18px] py-3 text-left hover:bg-gray-50 ${
+                  isSel ? 'border-r-2 border-gray-900 bg-gray-100' : ''
+                }`}
+              >
+                <div
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${avatarCls(c)}`}
+                >
+                  {initials(c)}
+                </div>
+                <div className="min-w-0 flex-1 leading-snug">
+                  <div className="text-[13px] font-semibold text-gray-900">{c.name}</div>
+                  <div className="truncate text-xs text-gray-500">
+                    {latest ? `${latest.title} · ${latest.status}` : c.email}
+                  </div>
+                </div>
+                {latest?.status === 'draft' && (
+                  <span className="shrink-0 rounded-full bg-gray-900 px-2 py-[3px] text-[10px] font-bold text-purple-300">
+                    ✦ AI
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Detail pane */}
+      {!selected ? (
+        <div className="flex flex-1 items-center justify-center text-sm text-gray-400">
+          Select a contact to see their profile.
+        </div>
+      ) : (
+        <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+          {/* Header */}
+          <div className="flex flex-wrap items-center gap-4 border-b border-gray-200 bg-white px-7 py-5">
+            <div
+              className={`flex h-[54px] w-[54px] items-center justify-center rounded-full text-[17px] font-bold ${avatarCls(selected)}`}
+            >
+              {initials(selected)}
+            </div>
+            <div className="min-w-[200px] flex-1 leading-snug">
+              <div className="text-[21px] font-bold tracking-tight text-gray-900">{selected.name}</div>
+              <div className="text-[13px] text-gray-500">
+                {selected.email}
+                {selected.phone ? ` · ${selected.phone}` : ''} · {contactQuotes.length} trip
+                {contactQuotes.length === 1 ? '' : 's'}
+                {lifetime > 0 ? ` · ${fmt(lifetime)} lifetime` : ''}
+              </div>
+            </div>
+            <button
+              onClick={continueTrip}
+              className="h-10 cursor-pointer rounded-xl bg-gray-900 px-[18px] text-[13px] font-semibold text-white transition-colors hover:bg-gray-800"
+            >
+              ✦ {currentTrip ? 'Continue trip' : 'Start a trip'}
+            </button>
+          </div>
+
+          {/* Body grid */}
+          <div className="grid flex-1 content-start gap-3.5 px-7 py-[18px] lg:grid-cols-[1.5fr_1fr]">
+            <div className="flex min-w-0 flex-col gap-3.5">
+              {/* Preferences */}
+              <div className="rounded-[14px] border border-gray-200 bg-white px-[18px] py-4 shadow-sm">
+                <div className="flex items-center gap-2 text-xs font-bold tracking-[.06em] text-gray-500">
+                  PREFERENCES
+                  <span className="rounded-full bg-gray-900 px-2 py-0.5 text-[10px] font-bold tracking-normal text-purple-300">
+                    ✦ agent reads these
+                  </span>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {prefChips(selected).map((p) => (
+                    <span
+                      key={p}
+                      className="rounded-full border border-gray-200 bg-white px-[13px] py-1.5 text-xs font-semibold text-gray-700"
+                    >
+                      {p}
+                    </span>
+                  ))}
+                  {prefChips(selected).length === 0 && (
+                    <span className="rounded-full border border-dashed border-gray-300 bg-gray-50 px-[13px] py-1.5 text-xs font-semibold text-gray-400">
+                      No preferences on file yet
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Trip history */}
+              <div className="rounded-[14px] border border-gray-200 bg-white px-[18px] pb-1 pt-4 shadow-sm">
+                <div className="text-xs font-bold tracking-[.06em] text-gray-500">TRIP HISTORY</div>
+                {history.length === 0 && (
+                  <div className="py-4 text-[13px] text-gray-400">No past trips yet.</div>
+                )}
+                {history.map((q, i) => (
+                  <div
+                    key={q.id}
+                    onClick={() => router.push(`/quotes/${q.id}`)}
+                    className={`flex cursor-pointer items-center gap-3.5 py-3 hover:bg-gray-50 ${
+                      i < history.length - 1 ? 'border-b border-gray-100' : ''
+                    }`}
+                  >
+                    <div
+                      className={`flex h-[60px] w-24 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-br ${THUMBS[i % THUMBS.length]}`}
+                    >
+                      <span className="text-xl font-bold text-white/40">
+                        {q.title.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="min-w-0 flex-1 leading-normal">
+                      <div className="text-[13px] font-semibold text-gray-900">{q.title}</div>
+                      <div className="text-xs text-gray-500">
+                        {quoteDates(q)} · {q.status}
+                      </div>
+                    </div>
+                    <div className="text-[13px] font-bold text-gray-900">{fmt(q.totalCost)}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Current trip */}
+            <div className="min-w-0">
+              {currentTrip ? (
+                <div className="overflow-hidden rounded-[14px] border border-gray-200 bg-white shadow-sm">
+                  <div className="relative flex h-[120px] items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600">
+                    <span className="text-4xl font-bold text-white/30">
+                      {currentTrip.title.charAt(0).toUpperCase()}
+                    </span>
+                    {currentTrip.status === 'draft' && (
+                      <span className="absolute left-2.5 top-2.5 rounded-full bg-gray-900/85 px-2.5 py-[3px] text-[10px] font-bold text-purple-300">
+                        ✦ AI DRAFT
+                      </span>
+                    )}
+                  </div>
+                  <div className="px-[18px] pb-4 pt-3.5">
+                    <div className="text-xs font-bold tracking-[.06em] text-gray-500">CURRENT TRIP</div>
+                    <div className="mt-1 text-[17px] font-bold tracking-tight text-gray-900">
+                      {currentTrip.title} · {quoteDates(currentTrip)}
+                    </div>
+                    <div className="mt-0.5 text-xs text-gray-500">
+                      {currentTrip.status === 'sent'
+                        ? `Quote ${fmt(currentTrip.totalCost)} · sent`
+                        : currentTrip.totalCost > 0
+                          ? `Quote ${fmt(currentTrip.totalCost)} · draft`
+                          : 'Building with the agent'}
+                    </div>
+                    <div className="mt-3 flex flex-col gap-[7px] text-xs">
+                      {checklist.map((t) => (
+                        <div key={t.label} className="flex items-center gap-2">
+                          <span className={`w-3 text-center ${t.done ? 'text-green-600' : 'text-gray-400'}`}>
+                            {t.done ? '✓' : '○'}
+                          </span>
+                          <span className={t.done ? 'text-gray-700' : 'text-gray-400'}>{t.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      onClick={continueTrip}
+                      className="mt-3.5 h-10 w-full cursor-pointer rounded-[10px] bg-blue-600 text-[13px] font-semibold text-white transition-colors hover:bg-blue-700"
+                    >
+                      ✦ Continue in Trip Builder
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-[14px] border-2 border-dashed border-gray-300 bg-white px-6 py-8 text-center text-[13px] text-gray-400">
+                  No active trip —{' '}
+                  <button onClick={continueTrip} className="font-semibold text-blue-600 hover:underline">
+                    start one with the agent ✦
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function ContactsPage() {
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
+
+  return (
+    <ProtectedRoute>
+      <MainLayout>{hydrated && <ContactsView />}</MainLayout>
+    </ProtectedRoute>
   );
 }

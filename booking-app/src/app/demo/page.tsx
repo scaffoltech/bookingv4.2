@@ -1,15 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useQuoteStore } from '@/store/quote-store';
-import { useContactStore } from '@/store/contact-store';
+import { useQuoteCompat } from '@/hooks/compat/useQuoteCompat';
+import { useContactCompat } from '@/hooks/compat/useContactCompat';
 import { ModernButton } from '@/components/ui/modern-button';
 import { ModernCard, ModernCardContent } from '@/components/ui/modern-card';
 import { ExternalLink, Eye } from 'lucide-react';
 
 export default function DemoPage() {
-  const { quotes, generatePreviewLink } = useQuoteStore();
-  const { contacts } = useContactStore();
+  const { quotes, generatePreviewLink } = useQuoteCompat();
+  const { contacts } = useContactCompat();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -20,8 +20,8 @@ export default function DemoPage() {
     return <div>Loading...</div>;
   }
 
-  const handlePreviewQuote = (quoteId: string) => {
-    const previewLink = generatePreviewLink(quoteId);
+  const handlePreviewQuote = async (quoteId: string) => {
+    const previewLink = await generatePreviewLink(quoteId);
     if (previewLink) {
       window.open(previewLink, '_blank');
     }
@@ -92,8 +92,8 @@ export default function DemoPage() {
                         </ModernButton>
                         <ModernButton
                           variant="outline"
-                          onClick={() => {
-                            const link = generatePreviewLink(quote.id);
+                          onClick={async () => {
+                            const link = await generatePreviewLink(quote.id);
                             if (link) {
                               navigator.clipboard.writeText(link);
                               alert('Link copied to clipboard!');

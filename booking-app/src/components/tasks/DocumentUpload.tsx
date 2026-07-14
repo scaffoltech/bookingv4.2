@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { useTaskStore } from '@/store/task-store';
+import { useTaskCompat } from '@/hooks/compat/useTaskCompat';
 import { Upload, X, FileText, Image as ImageIcon, File, CheckCircle } from 'lucide-react';
 
 interface DocumentUploadProps {
@@ -10,7 +10,7 @@ interface DocumentUploadProps {
 }
 
 export function DocumentUpload({ taskId, onUploadComplete }: DocumentUploadProps) {
-  const { addAttachment, getAttachmentsByTask, completeTask } = useTaskStore();
+  const { addAttachment, getAttachmentsByTask, completeTask } = useTaskCompat();
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);

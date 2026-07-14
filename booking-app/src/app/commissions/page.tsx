@@ -6,8 +6,8 @@ import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useCommissionStore } from '@/store/commission-store';
-import { useAuthStore } from '@/store/auth-store';
+import { useCommissionCompat } from '@/hooks/compat/useCommissionCompat';
+import { useAuth } from '@/components/auth/AuthProvider';
 import { MainLayout } from '@/components/layout/MainLayout';
 import {
   DollarSign,
@@ -26,7 +26,7 @@ import {
 import { Commission, CommissionStatus } from '@/types/financial';
 
 export default function CommissionsPage() {
-  const { user } = useAuthStore();
+  const { profile: user } = useAuth();
   const {
     commissions,
     getCommissionsByStatus,
@@ -40,7 +40,7 @@ export default function CommissionsPage() {
     markCommissionAsPaid,
     bulkApproveCommissions,
     bulkMarkAsPaid
-  } = useCommissionStore();
+  } = useCommissionCompat();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<CommissionStatus | 'all'>('all');

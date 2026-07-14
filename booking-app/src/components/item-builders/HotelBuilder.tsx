@@ -43,6 +43,10 @@ interface HotelBuilderProps {
     endDate: string;
     price: number;
     quantity: number;
+    source?: 'api' | 'manual';
+    apiProvider?: 'hotelbeds' | 'amadeus' | 'sabre';
+    supplierCost?: number;
+    clientPrice?: number;
     details: EnhancedHotelDetails;
   }) => void;
   onCancel: () => void;
@@ -325,7 +329,6 @@ export function HotelBuilder({ onSubmit, onCancel, tripStartDate, tripEndDate }:
         supplierSource: rate.source,
         supplier: rate.supplier,
         commissionPercent: rate.commissionPercent,
-        rateKey: '',
         clientPrice: calculated.clientPrice,      // What customer pays (with markup) for selected dates
         supplierCost: calculated.baseRate         // Nett cost from supplier for selected dates
       },
@@ -407,7 +410,6 @@ export function HotelBuilder({ onSubmit, onCancel, tripStartDate, tripEndDate }:
         },
         supplier: formData.supplier || undefined,
         commissionPercent: formData.commissionPercent ? parseFloat(formData.commissionPercent) : undefined,
-        rateKey: '',
         clientPrice: parseFloat(formData.price),
         supplierCost: formData.commissionPercent
           ? parseFloat(formData.price) * (1 - parseFloat(formData.commissionPercent) / 100)

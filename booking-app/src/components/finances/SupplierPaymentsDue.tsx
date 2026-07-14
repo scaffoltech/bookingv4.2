@@ -1,8 +1,8 @@
 'use client';
 
-import { useExpenseStore } from '@/store/expense-store';
-import { useContactStore } from '@/store/contact-store';
-import { useQuoteStore } from '@/store/quote-store';
+import { useExpenseCompat } from '@/hooks/compat/useExpenseCompat';
+import { useContactCompat } from '@/hooks/compat/useContactCompat';
+import { useQuoteCompat } from '@/hooks/compat/useQuoteCompat';
 import { formatCurrency } from '@/lib/utils';
 import { DollarSign, Calendar, User, FileText, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,9 +10,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 export function SupplierPaymentsDue() {
-  const { expenses, updateExpense } = useExpenseStore();
-  const { getContactById } = useContactStore();
-  const { getQuoteById } = useQuoteStore();
+  const { expenses, updateExpense } = useExpenseCompat();
+  const { getContactById } = useContactCompat();
+  const { getQuoteById } = useQuoteCompat();
 
   // Filter pending supplier payments
   const pendingPayments = expenses.filter(

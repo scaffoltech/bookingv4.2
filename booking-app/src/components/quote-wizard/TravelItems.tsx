@@ -5,7 +5,7 @@ import { Calendar, momentLocalizer, View, SlotInfo, ToolbarProps } from 'react-b
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
 import moment from 'moment';
 import { TravelQuote, TravelItem, CalendarEvent } from '@/types';
-import { useQuoteStore } from '@/store/quote-store';
+import { useQuoteCompat } from '@/hooks/compat/useQuoteCompat';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,7 +34,7 @@ interface TravelItemsProps {
 }
 
 export function TravelItems({ quote, onComplete }: TravelItemsProps) {
-  const { addItemToQuote, removeItemFromQuote, updateItemInQuote } = useQuoteStore();
+  const { addItemToQuote, removeItemFromQuote, updateItemInQuote, getQuoteById } = useQuoteCompat();
   const [view, setView] = useState<View>('month'); // Default to month view for better overview
   const [date, setDate] = useState(new Date(quote.travelDates.start));
   const [showFlightBuilder, setShowFlightBuilder] = useState(false);
@@ -65,9 +65,7 @@ export function TravelItems({ quote, onComplete }: TravelItemsProps) {
   // Ref to store last click coordinates for context menu positioning
   const lastClickPosition = useRef({ x: 0, y: 0 });
 
-  const currentQuote = useQuoteStore(state => 
-    state.quotes.find(q => q.id === quote.id)
-  ) || quote;
+  const currentQuote = getQuoteById(quote.id) || quote;
 
   // Use filtered items if available, otherwise use all items
   const displayItems = filteredItems.length > 0 || currentQuote.items.length === 0 ? filteredItems : currentQuote.items;

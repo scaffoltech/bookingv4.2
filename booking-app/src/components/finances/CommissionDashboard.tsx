@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useCommissionStore } from '@/store/commission-store';
+import { useCommissionCompat } from '@/hooks/compat/useCommissionCompat';
 import { Button } from '@/components/ui/button';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,10 +26,10 @@ import { CheckCircle, Clock, DollarSign, TrendingUp } from 'lucide-react';
 export function CommissionDashboard() {
   const [statusFilter, setStatusFilter] = useState<CommissionStatus | 'all'>('all');
 
-  const allCommissions = useCommissionStore((state) => state.commissions);
-  const totalEarned = useCommissionStore((state) => state.getTotalCommissionsEarned());
-  const totalPaid = useCommissionStore((state) => state.getTotalCommissionsPaid());
-  const totalPending = useCommissionStore((state) => state.getTotalCommissionsPending());
+  const { commissions: allCommissions, getTotalCommissionsEarned, getTotalCommissionsPaid, getTotalCommissionsPending } = useCommissionCompat();
+  const totalEarned = getTotalCommissionsEarned();
+  const totalPaid = getTotalCommissionsPaid();
+  const totalPending = getTotalCommissionsPending();
 
   // Filter commissions
   let filteredCommissions = statusFilter === 'all'
@@ -43,6 +43,7 @@ export function CommissionDashboard() {
 
   const getStatusBadge = (status: CommissionStatus) => {
     const variants: Record<CommissionStatus, BadgeProps['variant']> = {
+      draft: 'secondary',
       pending: 'warning',
       approved: 'default',
       paid: 'success',
@@ -57,11 +58,11 @@ export function CommissionDashboard() {
   };
 
   const handleApprove = (commissionId: string) => {
-    useCommissionStore.getState().approveCommission(commissionId);
+    useCommissionCompat().approveCommission(commissionId);
   };
 
   const handleMarkAsPaid = (commissionId: string) => {
-    useCommissionStore.getState().markCommissionAsPaid(commissionId, 'bank_transfer');
+    useCommissionCompat().markCommissionAsPaid(commissionId, 'bank_transfer');
   };
 
   return (

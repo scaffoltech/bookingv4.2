@@ -1,7 +1,7 @@
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled' | 'partial' | 'confirmed' | 'accepted';
 export type PaymentStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'refunded';
 export type PaymentMethod = 'credit_card' | 'bank_transfer' | 'cash' | 'check' | 'paypal' | 'stripe' | 'auto_deducted';
-export type CommissionStatus = 'pending' | 'approved' | 'paid' | 'disputed';
+export type CommissionStatus = 'draft' | 'pending' | 'approved' | 'paid' | 'disputed';
 export type ExpenseCategory =
   | 'supplier_payment'
   | 'marketing'
@@ -42,17 +42,17 @@ export interface Invoice {
   customerName: string;
   customerEmail: string;
   customerAddress?: {
-    line1: string;
-    line2?: string;
+    street: string;
     city: string;
     state: string;
-    zipCode: string;
-    country: string;
+    zip: string;
+    country?: string;
   };
 
   issueDate: string;
   dueDate: string;
   status: InvoiceStatus;
+  currency?: string;
 
   items: InvoiceItem[];
   subtotal: number;
@@ -64,6 +64,11 @@ export interface Invoice {
   payments: Payment[];
   paidAmount: number;
   remainingAmount: number;
+
+  sentAt?: string;
+  viewedAt?: string;
+  paidAt?: string;
+  overdueAt?: string;
 
   terms?: string;
   notes?: string;
@@ -82,16 +87,20 @@ export interface Commission {
   bookingId: string;
   quoteId: string;
   invoiceId?: string; // Link to invoice that generated this commission
+  transactionId?: string; // Link to the transaction that paid this commission
   customerId: string;
   customerName: string;
 
   bookingAmount: number;
+  bookingType?: 'flight' | 'hotel' | 'activity' | 'transfer';
   commissionRate: number; // percentage
   commissionAmount: number;
+  currency?: string;
 
   status: CommissionStatus;
   earnedDate: string;
   paidDate?: string;
+  paidAt?: string;
   paymentMethod?: PaymentMethod;
 
   notes?: string;
@@ -113,6 +122,7 @@ export interface CommissionRule {
 
 export interface Expense {
   id: string;
+  title: string;
   category: ExpenseCategory;
   subcategory?: string;
   amount: number;
@@ -128,7 +138,7 @@ export interface Expense {
   approvedDate?: string;
 
   // Payment status and method
-  status?: 'pending' | 'paid' | 'cancelled';
+  status?: 'draft' | 'pending' | 'paid' | 'booked' | 'cancelled';
   paymentMethod?: PaymentMethod;
 
   isRecurring?: boolean;

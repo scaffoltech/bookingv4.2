@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useContactStore } from '@/store/contact-store';
+import { useContactCompat } from '@/hooks/compat/useContactCompat';
 import { Contact } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,7 @@ interface ContactFormProps {
 }
 
 export function ContactForm({ contact, onClose }: ContactFormProps) {
-  const { addContact, updateContact } = useContactStore();
+  const { addContact, updateContact } = useContactCompat();
   const [formData, setFormData] = useState({
     firstName: contact?.firstName || '',
     lastName: contact?.lastName || '',
@@ -43,7 +43,7 @@ export function ContactForm({ contact, onClose }: ContactFormProps) {
       updateContact(contact.id, formData);
     } else {
       // Add new contact
-      addContact(formData);
+      addContact({ ...formData, name: `${formData.firstName} ${formData.lastName}`.trim() });
     }
 
     onClose();

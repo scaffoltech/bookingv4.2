@@ -1,8 +1,8 @@
 'use client';
 
 import { TravelQuote, Contact } from '@/types';
-import { useContactStore } from '@/store/contact-store';
-import { useQuoteStore } from '@/store/quote-store';
+import { useContactCompat } from '@/hooks/compat/useContactCompat';
+import { useQuoteCompat } from '@/hooks/compat/useQuoteCompat';
 import { ModernButton } from '@/components/ui/modern-button';
 import { ModernCard } from '@/components/ui/modern-card';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
@@ -49,8 +49,8 @@ interface QuoteCardProps {
 }
 
 export function QuoteCard({ quote, onDelete, onDuplicate, onStatusChange }: QuoteCardProps) {
-  const { getContactById } = useContactStore();
-  const { updateQuoteStatus, duplicateQuote, deleteQuote, sendQuoteToClient, generatePreviewLink } = useQuoteStore();
+  const { getContactById } = useContactCompat();
+  const { updateQuoteStatus, duplicateQuote, deleteQuote, sendQuoteToClient, generatePreviewLink } = useQuoteCompat();
   
   const contact = getContactById(quote.contactId);
   
@@ -83,8 +83,8 @@ export function QuoteCard({ quote, onDelete, onDuplicate, onStatusChange }: Quot
     onStatusChange?.(quote.id, newStatus);
   };
 
-  const handleDuplicate = () => {
-    const newQuoteId = duplicateQuote(quote.id);
+  const handleDuplicate = async () => {
+    const newQuoteId = await duplicateQuote(quote.id);
     if (newQuoteId) {
       onDuplicate?.(newQuoteId);
     }
@@ -108,15 +108,15 @@ export function QuoteCard({ quote, onDelete, onDuplicate, onStatusChange }: Quot
     }
   };
 
-  const handlePreview = () => {
-    const previewLink = generatePreviewLink(quote.id);
+  const handlePreview = async () => {
+    const previewLink = await generatePreviewLink(quote.id);
     if (previewLink) {
       window.open(previewLink, '_blank');
     }
   };
 
   const handleCopyLink = async () => {
-    const previewLink = generatePreviewLink(quote.id);
+    const previewLink = await generatePreviewLink(quote.id);
     if (previewLink) {
       try {
         await navigator.clipboard.writeText(previewLink);

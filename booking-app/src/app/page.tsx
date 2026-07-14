@@ -42,7 +42,7 @@ export default function Home() {
               <Link href="/modern-ui" className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 transition-colors">Modern UI</Link>
               <DarkModeToggle />
               <ModernButton variant="outline" size="sm" asChild>
-                <Link href="/login">Sign In</Link>
+                <Link href="/auth/login">Sign In</Link>
               </ModernButton>
               <ModernButton variant="primary" size="sm" asChild>
                 <Link href="/quote-wizard">Get Started</Link>

@@ -6,12 +6,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useInvoiceStore } from '@/store/invoice-store';
-import { useCommissionStore } from '@/store/commission-store';
-import { useExpenseStore } from '@/store/expense-store';
-import { useAuthStore } from '@/store/auth-store';
+import { useInvoiceCompat } from '@/hooks/compat/useInvoiceCompat';
+import { useCommissionCompat } from '@/hooks/compat/useCommissionCompat';
+import { useExpenseCompat } from '@/hooks/compat/useExpenseCompat';
+import { useAuth } from '@/components/auth/AuthProvider';
 import { MainLayout } from '@/components/layout/MainLayout';
-import { useQuoteStore } from '@/store/quote-store';
+import { useQuoteCompat } from '@/hooks/compat/useQuoteCompat';
+import { useContactCompat } from '@/hooks/compat/useContactCompat';
 import { formatItemDetails } from '@/lib/travel-item-formatter';
 import {
   TrendingUp,
@@ -27,11 +28,12 @@ import {
 } from 'lucide-react';
 
 export default function FinancesPage() {
-  const { user } = useAuthStore();
-  const { invoices, getTotalRevenue, getTotalOutstanding, getOverdueAmount, getFinancialSummary, getInvoicesByStatus, markInvoiceAsPaid } = useInvoiceStore();
-  const { getTotalCommissionsEarned, getTotalCommissionsPaid, getTotalCommissionsPending, bulkMarkAsPaid, getUnpaidCommissions } = useCommissionStore();
-  const { getTotalExpenses, getExpensesByCategory } = useExpenseStore();
-  const { getQuotesByStatus, generateInvoiceFromAcceptedQuote } = useQuoteStore();
+  const { profile: user } = useAuth();
+  const { invoices, getTotalRevenue, getTotalOutstanding, getOverdueAmount, getFinancialSummary, getInvoicesByStatus, markInvoiceAsPaid, createInvoice } = useInvoiceCompat();
+  const { getTotalCommissionsEarned, getTotalCommissionsPaid, getTotalCommissionsPending, bulkMarkAsPaid, getUnpaidCommissions, generateCommissionFromBooking } = useCommissionCompat();
+  const { getTotalExpenses, getExpensesByCategoryTotals } = useExpenseCompat();
+  const { getQuotesByStatus, generateInvoiceFromAcceptedQuote } = useQuoteCompat();
+  const { getContactById } = useContactCompat();
 
   const [dateRange, setDateRange] = useState('30'); // days
   const [selectedPeriod, setSelectedPeriod] = useState({
@@ -58,7 +60,7 @@ export default function FinancesPage() {
   const netProfit = totalRevenue - totalExpenses - totalCommissionsPaid;
   const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : '0';
 
-  const expensesByCategory = getExpensesByCategory(selectedPeriod.startDate, selectedPeriod.endDate);
+  const expensesByCategory = getExpensesByCategoryTotals(selectedPeriod.startDate, selectedPeriod.endDate);
 
   const financialSummary = getFinancialSummary(selectedPeriod.startDate, selectedPeriod.endDate);
 
@@ -86,22 +88,21 @@ export default function FinancesPage() {
 
     for (const quote of acceptedQuotes) {
       try {
-        // Import stores to avoid circular dependencies
-        const { useInvoiceStore } = await import('@/store/invoice-store');
-        const { useCommissionStore } = await import('@/store/commission-store');
-        const { useContactStore } = await import('@/store/contact-store');
-
-        const invoiceStore = useInvoiceStore.getState();
-        const commissionStore = useCommissionStore.getState();
-        const contactStore = useContactStore.getState();
-
         // Get customer data
-        const customer = contactStore.getContactById(quote.contactId);
+        const customer = getContactById(quote.contactId);
         const customerData = {
           customerId: quote.contactId,
           customerName: customer ? `${customer.firstName} ${customer.lastName}` : 'Unknown Customer',
           customerEmail: customer?.email || 'unknown@example.com',
           customerAddress: customer?.address
+            ? {
+                street: customer.address.street,
+                city: customer.address.city,
+                state: customer.address.state,
+                zip: customer.address.zipCode,
+                country: customer.address.country,
+              }
+            : undefined,
         };
 
         // Create invoice with actual quote data
@@ -147,11 +148,11 @@ export default function FinancesPage() {
           terms: 'Net 30',
         };
 
-        const invoiceId = invoiceStore.createInvoice(invoiceData);
+        const invoiceId = await createInvoice(invoiceData);
 
         if (invoiceId) {
           // Generate commission record
-          commissionStore.generateCommissionFromBooking({
+          await generateCommissionFromBooking({
             agentId: 'agent-001',
             agentName: 'Travel Agent',
             bookingId: invoiceId,

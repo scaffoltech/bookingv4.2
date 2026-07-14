@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { useAuthStore } from '@/store/auth-store';
+import { useAuth } from '@/components/auth/AuthProvider';
 import {
   LayoutDashboard,
   Users,
@@ -18,14 +18,15 @@ import {
   Receipt,
   CreditCard,
   DollarSign,
-  PieChart
+  PieChart,
+  UserCog
 } from 'lucide-react';
 import { useState } from 'react';
 
 export function AppNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const { profile: user, signOut: logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
@@ -75,6 +76,12 @@ export function AppNav() {
       label: 'Expenses',
       icon: CreditCard,
       active: pathname?.startsWith('/expenses')
+    },
+    {
+      href: '/team',
+      label: 'Team',
+      icon: UserCog,
+      active: pathname?.startsWith('/team')
     },
     {
       href: '/quote-wizard',

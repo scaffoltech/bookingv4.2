@@ -1,13 +1,13 @@
 'use client';
 
-import { useQuoteStore } from '@/store/quote-store';
-import { useInvoiceStore } from '@/store/invoice-store';
+import { useQuoteCompat } from '@/hooks/compat/useQuoteCompat';
+import { useInvoiceCompat } from '@/hooks/compat/useInvoiceCompat';
 import { formatCurrency } from '@/lib/utils';
 import { FileText, Send, CheckCircle, XCircle, DollarSign, TrendingUp, Briefcase } from 'lucide-react';
 
 export function QuoteStats() {
-  const { getQuotesStats } = useQuoteStore();
-  const { getTotalRevenue } = useInvoiceStore();
+  const { getQuotesStats } = useQuoteCompat();
+  const { getTotalRevenue } = useInvoiceCompat();
   const stats = getQuotesStats();
 
   // Get actual revenue from paid invoices instead of accepted quotes

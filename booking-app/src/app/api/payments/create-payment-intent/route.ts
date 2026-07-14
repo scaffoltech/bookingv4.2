@@ -1,34 +1,73 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getStripeInstance, formatAmountForStripe, calculateDepositAmount } from '@/lib/stripe/config';
-import { useQuoteStore } from '@/store/quote-store';
-import { usePaymentStore } from '@/store/payment-store';
-import { TravelQuote, TravelItem } from '@/types';
-import { PriceChange } from '@/types/payment';
+import { getStripeInstance, formatAmountForStripe, calculateSmartDepositAmount } from '@/lib/stripe/config';
+import { getAuthenticatedUser } from '@/lib/auth/api-auth';
+import { createAdminClient } from '@/lib/supabase/server';
+import { dbRowToQuote } from '@/lib/quote-mapper';
+import { repriceQuote } from '@/lib/payments/reprice';
+import { TravelQuote } from '@/types';
+import type { Json } from '@/types/database';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const {
-      quoteId,
-      paymentType, // 'full' | 'deposit'
-      customerId,
-      customerEmail,
-      quote, // Pass full quote object from client
-    } = body;
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    // Validate required fields
-    if (!quoteId || !paymentType || !customerEmail || !quote) {
+    const { quoteId, paymentType } = await request.json();
+
+    if (!quoteId || !paymentType || (paymentType !== 'full' && paymentType !== 'deposit')) {
       return NextResponse.json(
-        { error: 'Missing required fields: quoteId, paymentType, customerEmail, quote' },
+        { error: "Missing/invalid required fields: quoteId, paymentType ('full' | 'deposit')" },
         { status: 400 }
       );
     }
 
-    // **CRITICAL: Reprice API items before creating payment intent**
+    const supabase = await createAdminClient();
+
+    // Load the quote from the DB — the client never supplies pricing data.
+    const { data: quoteRow, error: quoteError } = await supabase.from('quotes').select('*').eq('id', quoteId).single();
+    if (quoteError || !quoteRow) {
+      return NextResponse.json({ error: 'Quote not found' }, { status: 404 });
+    }
+
+    const orgId: string = quoteRow.org_id;
+
+    const { data: membership } = await supabase
+      .from('org_memberships')
+      .select('id')
+      .eq('org_id', orgId)
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (!membership) {
+      return NextResponse.json({ error: 'You do not have access to this organization' }, { status: 403 });
+    }
+
+    if (!quoteRow.contact_id) {
+      return NextResponse.json({ error: 'Quote has no contact assigned' }, { status: 400 });
+    }
+    const { data: contact } = await supabase.from('contacts').select('email').eq('id', quoteRow.contact_id).single();
+    const customerEmail = contact?.email;
+    if (!customerEmail) {
+      return NextResponse.json({ error: 'Quote contact has no email on file' }, { status: 400 });
+    }
+
+    let quote: TravelQuote = dbRowToQuote(quoteRow);
+
+    // Reprice API items against live supplier rates before charging.
     const repriceResult = await repriceQuote(quote);
 
     if (repriceResult.priceChanged) {
-      // Price has changed - return 409 Conflict with details
+      // Persist the repriced items/total so the reprice sticks even if the
+      // customer doesn't immediately retry — the next attempt (or this same
+      // one, on accept) will see the corrected numbers.
+      await supabase
+        .from('quotes')
+        .update({ items: repriceResult.items as unknown as Json, total_amount: repriceResult.newTotalCost })
+        .eq('id', quoteId);
+
       return NextResponse.json(
         {
           error: 'PRICE_CHANGED',
@@ -37,40 +76,28 @@ export async function POST(request: NextRequest) {
           newPrice: repriceResult.newTotalCost,
           priceDifference: repriceResult.newTotalCost - quote.totalCost,
           percentageChange: ((repriceResult.newTotalCost - quote.totalCost) / quote.totalCost) * 100,
-          changes: repriceResult.changes,
         },
-        { status: 409 } // 409 Conflict
+        { status: 409 }
       );
     }
 
-    // Calculate payment amount
-    let paymentAmount = quote.totalCost;
-    if (paymentType === 'deposit') {
-      paymentAmount = calculateDepositAmount(quote.totalCost);
-    }
+    const paymentAmount = paymentType === 'deposit' ? calculateSmartDepositAmount(quote) : quote.totalCost;
 
     const stripe = getStripeInstance();
 
-    // Create or retrieve Stripe Customer
-    let customer = null;
+    let customer;
     try {
-      // In production, check if customer exists in DB and retrieve their Stripe ID
-      // For now, create new customer each time
-      customer = await stripe.customers.create({
-        email: customerEmail,
-        metadata: {
-          quoteId,
-          customerId: customerId || 'guest',
-        },
-      });
-    } catch (error: any) {
-      return NextResponse.json(
-        { error: 'Failed to create customer account' },
-        { status: 500 }
-      );
+      const existingCustomers = await stripe.customers.list({ email: customerEmail, limit: 1 });
+      customer =
+        existingCustomers.data[0] ||
+        (await stripe.customers.create({
+          email: customerEmail,
+          metadata: { quoteId, customerId: quoteRow.contact_id || 'guest' },
+        }));
+    } catch {
+      return NextResponse.json({ error: 'Failed to create customer account' }, { status: 500 });
     }
 
-    // Create Payment Intent
     try {
       const paymentIntent = await stripe.paymentIntents.create({
         amount: formatAmountForStripe(paymentAmount),
@@ -78,14 +105,14 @@ export async function POST(request: NextRequest) {
         customer: customer.id,
         metadata: {
           quoteId,
+          orgId,
           paymentType,
-          customerId: customerId || 'guest',
+          customerId: quoteRow.contact_id || 'guest',
           quoteTitle: quote.title,
+          expectedAmount: paymentAmount.toFixed(2),
         },
         description: `${paymentType === 'deposit' ? 'Deposit' : 'Full payment'} for ${quote.title}`,
-        automatic_payment_methods: {
-          enabled: true,
-        },
+        automatic_payment_methods: { enabled: true },
       });
 
       return NextResponse.json({
@@ -96,85 +123,10 @@ export async function POST(request: NextRequest) {
         paymentType,
       });
     } catch (error: any) {
-      return NextResponse.json(
-        { error: 'Failed to create payment intent: ' + error.message },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to create payment intent: ' + error.message }, { status: 500 });
     }
   } catch (error: any) {
     console.error('Payment intent creation failed:', error);
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
-}
-
-/**
- * Reprice quote by checking current API rates
- * Returns price changes if any API items have different pricing
- */
-async function repriceQuote(quote: TravelQuote): Promise<{
-  priceChanged: boolean;
-  newTotalCost: number;
-  changes: PriceChange[];
-}> {
-  const changes: PriceChange[] = [];
-  let newTotalCost = 0;
-  let priceChanged = false;
-
-  for (const item of quote.items) {
-    if (item.source === 'api' && item.apiProvider) {
-      // Query API for current price
-      const currentPrice = await getAPICurrentPrice(item);
-
-      if (currentPrice !== item.price) {
-        priceChanged = true;
-
-        // Record price change (skip Zustand store for now - TODO: save to database)
-        const changeId = `price_change_${Date.now()}`;
-
-        changes.push({
-          id: changeId,
-          quoteId: quote.id,
-          quoteItemId: item.id,
-          originalPrice: item.price,
-          newPrice: currentPrice,
-          priceDifference: currentPrice - item.price,
-          percentageChange: ((currentPrice - item.price) / item.price) * 100,
-          reason: 'repricing_before_payment',
-          apiProvider: item.apiProvider,
-          clientNotified: true,
-          clientNotifiedAt: new Date().toISOString(),
-          clientAccepted: false,
-          createdAt: new Date().toISOString(),
-        });
-
-        newTotalCost += currentPrice;
-      } else {
-        newTotalCost += item.price;
-      }
-    } else {
-      // Offline rates don't change
-      newTotalCost += item.price;
-    }
-  }
-
-  return {
-    priceChanged,
-    newTotalCost,
-    changes,
-  };
-}
-
-/**
- * Get current price from API provider
- * In production, this would call the actual API (HotelBeds, Amadeus, etc.)
- * For now, simulates with random variation for testing
- */
-async function getAPICurrentPrice(item: TravelItem): Promise<number> {
-  // TODO: Implement actual API calls based on item.apiProvider
-  // For testing, simulate price variation (±10%)
-  const variation = (Math.random() - 0.5) * 0.2; // Random ±10%
-  return item.price * (1 + variation);
 }

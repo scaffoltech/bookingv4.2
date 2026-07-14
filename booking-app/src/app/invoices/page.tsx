@@ -6,8 +6,8 @@ import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useInvoiceStore } from '@/store/invoice-store';
-import { useAuthStore } from '@/store/auth-store';
+import { useInvoiceCompat } from '@/hooks/compat/useInvoiceCompat';
+import { useAuth } from '@/components/auth/AuthProvider';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { InvoiceModal } from '@/components/invoices/InvoiceModal';
 import { generateInvoicePDF } from '@/lib/pdf-generator';
@@ -31,7 +31,7 @@ import {
 import { Invoice, InvoiceStatus } from '@/types/financial';
 
 export default function InvoicesPage() {
-  const { user } = useAuthStore();
+  const { profile: user } = useAuth();
   const {
     invoices,
     getInvoicesByStatus,
@@ -43,7 +43,7 @@ export default function InvoicesPage() {
     getTotalRevenue,
     getTotalOutstanding,
     getOverdueAmount
-  } = useInvoiceStore();
+  } = useInvoiceCompat();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | 'all'>('all');

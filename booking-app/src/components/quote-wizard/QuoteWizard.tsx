@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useContactStore } from '@/store/contact-store';
-import { useQuoteStore } from '@/store/quote-store';
+import { useContactCompat } from '@/hooks/compat/useContactCompat';
+import { useQuoteCompat } from '@/hooks/compat/useQuoteCompat';
 import { Contact, TravelQuote } from '@/types';
 import { ModernButton } from '@/components/ui/modern-button';
 import { ModernCard } from '@/components/ui/modern-card';
@@ -27,8 +27,8 @@ export function QuoteWizard({ editQuoteId }: QuoteWizardProps) {
   const [currentQuote, setCurrentQuote] = useState<Partial<TravelQuote> | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
 
-  const { addQuote, updateQuote, getQuoteById, setCurrentQuote: setStoreCurrentQuote } = useQuoteStore();
-  const { addQuoteToContact, getContactById } = useContactStore();
+  const { addQuote, updateQuote, getQuoteById, setCurrentQuote: setStoreCurrentQuote } = useQuoteCompat();
+  const { addQuoteToContact, getContactById } = useContactCompat();
 
   // Load existing quote if editing
   useEffect(() => {
@@ -76,12 +76,12 @@ export function QuoteWizard({ editQuoteId }: QuoteWizardProps) {
     handleNext();
   };
 
-  const handleQuoteDetailsComplete = (quoteData: Partial<TravelQuote>) => {
+  const handleQuoteDetailsComplete = async (quoteData: Partial<TravelQuote>) => {
     if (!selectedContact) return;
-    
+
     if (isEditMode && currentQuote?.id) {
       // Update existing quote
-      updateQuote(currentQuote.id, {
+      await updateQuote(currentQuote.id, {
         title: quoteData.title || currentQuote.title,
         travelDates: quoteData.travelDates || currentQuote.travelDates,
         ...quoteData,
@@ -95,8 +95,10 @@ export function QuoteWizard({ editQuoteId }: QuoteWizardProps) {
       }
     } else {
       // Create new quote
-      const newQuoteId = addQuote({
+      const newQuoteId = await addQuote({
         contactId: selectedContact.id,
+        customerId: selectedContact.id,
+        customerName: `${selectedContact.firstName} ${selectedContact.lastName}`,
         title: quoteData.title || 'New Travel Quote',
         items: [],
         totalCost: 0,
@@ -111,7 +113,7 @@ export function QuoteWizard({ editQuoteId }: QuoteWizardProps) {
       addQuoteToContact(selectedContact.id, newQuoteId);
 
       // Set current quote in store for timeline integration
-      const quote = useQuoteStore.getState().getQuoteById(newQuoteId);
+      const quote = getQuoteById(newQuoteId);
       if (quote) {
         setCurrentQuote(quote);
         setStoreCurrentQuote(quote);
@@ -154,7 +156,7 @@ export function QuoteWizard({ editQuoteId }: QuoteWizardProps) {
         return (
           <QuoteDetails
             contact={selectedContact!}
-            quote={isEditMode ? currentQuote : undefined}
+            quote={isEditMode ? (currentQuote ?? undefined) : undefined}
             onComplete={handleQuoteDetailsComplete}
           />
         );

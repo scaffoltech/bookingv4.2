@@ -1,15 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, notFound } from 'next/navigation';
-import { TravelQuote, Contact } from '@/types';
-import { useQuoteStore } from '@/store/quote-store';
-import { useContactStore } from '@/store/contact-store';
+import { useParams } from 'next/navigation';
+import { useClientQuoteQuery, useClientContactQuery } from '@/hooks/queries/useClientQuoteQuery';
 import { ClientQuoteView } from '@/components/client/ClientQuoteView';
 import { ModernCard } from '@/components/ui/modern-card';
 import { Loader2 } from 'lucide-react';
 
-// This would typically come from your backend API or URL params
 const getAccessToken = () => {
   if (typeof window !== 'undefined') {
     const urlParams = new URLSearchParams(window.location.search);
@@ -18,80 +15,42 @@ const getAccessToken = () => {
   return null;
 };
 
-// In a real implementation, you'd validate the token against your backend
-const validateAccessToken = (token: string, quoteId: string): boolean => {
-  // For demo purposes, we'll accept any token that matches a pattern
-  // In production, this should validate against a secure backend
-  return token && token.length > 10;
-};
-
 export default function ClientQuotePage() {
   const params = useParams();
   const quoteId = params.quoteId as string;
-  const [quote, setQuote] = useState<TravelQuote | null>(null);
-  const [contact, setContact] = useState<Contact | null>(null);
-  const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
 
-  const { getQuoteById } = useQuoteStore();
-  const { getContactById } = useContactStore();
+  // The server validates the HMAC-signed token on every request — the
+  // browser just needs to have one to send.
+  useEffect(() => {
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+      setAccessDenied(true);
+    } else {
+      setToken(accessToken);
+    }
+  }, [quoteId]);
+
+  const { data: quote, isLoading: quoteLoading, error: quoteError } = useClientQuoteQuery(quoteId, token);
 
   useEffect(() => {
-    const loadQuoteData = async () => {
-      try {
-        // Check access token
-        const token = getAccessToken();
-        if (!token || !validateAccessToken(token, quoteId)) {
-          setAccessDenied(true);
-          setLoading(false);
-          return;
-        }
-
-        // Load quote data
-        const quoteData = getQuoteById(quoteId);
-        if (!quoteData) {
-          notFound();
-          return;
-        }
-
-        // Load contact data
-        const contactData = getContactById(quoteData.contactId);
-        if (!contactData) {
-          notFound();
-          return;
-        }
-
-        setQuote(quoteData);
-        setContact(contactData);
-      } catch (error) {
-        console.error('Failed to load quote:', error);
-        notFound();
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (quoteId) {
-      loadQuoteData();
+    if (quoteError && !quoteLoading) {
+      setAccessDenied(true);
     }
-  }, [quoteId, getQuoteById, getContactById]);
+  }, [quoteError, quoteLoading]);
 
-  const handleQuoteAction = (action: 'accept' | 'reject' | 'message' | 'payment') => {
-    console.log('Quote action:', action, 'for quote:', quoteId);
-    // In a real implementation, this would send the action to your backend
+  const { data: contact, isLoading: contactLoading } = useClientContactQuery(quote?.contactId, quoteId, token);
 
-    // Update quote status if accepting/rejecting
-    if (action === 'accept' || action === 'reject') {
-      const { updateQuoteStatus } = useQuoteStore.getState();
-      updateQuoteStatus(quoteId, action === 'accept' ? 'accepted' : 'rejected');
-    }
+  const loading = quoteLoading || contactLoading;
 
-    // Reload quote after payment to get updated status
-    if (action === 'payment') {
-      const updatedQuote = getQuoteById(quoteId);
-      if (updatedQuote) {
-        setQuote(updatedQuote);
-      }
+  const handleQuoteAction = async (action: 'accept' | 'reject' | 'message' | 'payment') => {
+    if ((action === 'accept' || action === 'reject') && token) {
+      await fetch(`/api/client/quotes/${quoteId}?token=${encodeURIComponent(token)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: action === 'accept' ? 'accepted' : 'rejected' }),
+      });
     }
   };
 
@@ -127,8 +86,20 @@ export default function ClientQuotePage() {
     );
   }
 
+  if (quoteError || (!loading && !quote)) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-800 flex items-center justify-center">
+        <ModernCard className="max-w-md mx-auto text-center p-8">
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Quote Not Found</h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            The quote you&apos;re looking for doesn&apos;t exist or has been removed.
+          </p>
+        </ModernCard>
+      </div>
+    );
+  }
+
   if (!quote || !contact) {
-    notFound();
     return null;
   }
 
@@ -139,6 +110,7 @@ export default function ClientQuotePage() {
       agentName="Travel Expert" // This would come from your backend
       agentEmail="agent@travelcompany.com" // This would come from your backend
       onQuoteAction={handleQuoteAction}
+      clientToken={token || undefined}
     />
   );
 }

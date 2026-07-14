@@ -6,7 +6,17 @@ export type TaskType =
   | 'upload_confirmation'
   | 'verify_booking'
   | 'contact_supplier'
-  | 'send_documents';
+  | 'send_documents'
+  | 'manual_booking'
+  | 'follow_up'
+  | 'document_collection'
+  | 'api_booking'
+  | 'price_review'
+  | 'awaiting_supplier'
+  | 'booking_failed'
+  | 'passenger_details'
+  | 'booking_ready'
+  | 'awaiting_payment';
 
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 
@@ -32,6 +42,8 @@ export interface BookingTask {
   // Related entities
   quoteId: string;
   quoteItemId?: string; // Specific item if task is item-specific
+  bookingId?: string; // Linked booking record
+  bookingItemId?: string; // Linked booking item
   customerId: string;
   customerName: string;
 

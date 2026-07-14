@@ -6,6 +6,9 @@ export interface Contact {
   email: string;
   phone?: string;
   type?: 'customer' | 'supplier'; // Contact type
+  company?: string; // Company name
+  tags?: string[]; // Tags for categorization and search
+  notes?: string;
   address?: Address;
   preferences?: TravelPreferences;
   quotes: string[]; // Quote IDs
@@ -50,7 +53,7 @@ export interface TravelQuote {
   title: string;
   items: TravelItem[];
   totalCost: number;
-  status: 'draft' | 'sent' | 'accepted' | 'rejected';
+  status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'booked' | 'cancelled';
   travelDates: { start: Date; end: Date };
   commissionRate?: number; // percentage (0-50), defaults to global setting
   validationOverrides?: ValidationOverride[]; // Track validation warnings that were overridden
@@ -70,6 +73,9 @@ export interface TravelQuote {
   originalTotalCost?: number; // Initial quote price
   currentTotalCost?: number; // After repricing
   priceChanges?: string[]; // PriceChange IDs
+
+  // Optimistic locking
+  version?: number;
 }
 
 export interface TravelItem {
@@ -104,7 +110,7 @@ export interface TravelItem {
   };
 
   // Booking confirmation
-  bookingStatus?: 'not_booked' | 'pending' | 'confirmed' | 'failed' | 'cancelled';
+  bookingStatus?: 'not_booked' | 'pending' | 'confirmed' | 'booked' | 'failed' | 'cancelled' | 'holding' | 'price_checking' | 'price_changed' | 'booking_in_progress' | 'awaiting_supplier' | 'awaiting_passenger_details';
   confirmationNumber?: string;
   confirmedAt?: string;
 }

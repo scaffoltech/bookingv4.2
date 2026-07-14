@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useInvoiceStore } from '@/store/invoice-store';
+import { useInvoiceCompat } from '@/hooks/compat/useInvoiceCompat';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
@@ -27,8 +27,7 @@ export function InvoiceList() {
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const allInvoices = useInvoiceStore((state) => state.invoices);
-  const searchInvoices = useInvoiceStore((state) => state.searchInvoices);
+  const { invoices: allInvoices, searchInvoices } = useInvoiceCompat();
 
   // Filter invoices
   let filteredInvoices = searchQuery

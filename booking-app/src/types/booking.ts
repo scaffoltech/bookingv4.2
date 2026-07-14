@@ -96,6 +96,7 @@ export interface EnhancedHotelDetails {
     };
   };
   confirmationNumber?: string;
+  rateKey?: string;         // Supplier booking reference (e.g. HotelBeds rateKey) — required to actually book
 
   // Cost tracking fields (for markup + profit calculation)
   supplierCost?: number;    // What we pay the supplier (HotelBeds, etc.)
@@ -232,5 +233,69 @@ export interface BookingConfirmation {
     name: string;
     email: string;
     phone: string;
+  };
+}
+
+// =====================================================
+// Database-level Booking Types (for bookings table)
+// =====================================================
+
+/**
+ * BookingItem - Individual line item in a booking
+ * Maps to booking_items table with normalized structure
+ */
+export interface BookingItem {
+  id: string;
+  bookingId: string;
+  type: 'flight' | 'hotel' | 'activity' | 'transfer';
+  name: string;
+  startDate: string;
+  endDate: string | null;
+  price: number;
+  quantity: number;
+  details: Record<string, any>;
+  supplier: string | null;
+  supplierSource: string | null;
+  supplierCost: number | null;
+  clientPrice: number | null;
+  platformFee: number | null;
+  agentMarkup: number | null;
+  bookingStatus: 'not_booked' | 'pending' | 'confirmed' | 'booked' | 'failed' | 'cancelled' | 'holding' | 'price_checking' | 'price_changed' | 'booking_in_progress' | 'awaiting_supplier' | 'awaiting_passenger_details' | 'ready_to_book' | 'awaiting_full_payment';
+  confirmationNumber: string | null;
+  confirmedAt: string | null;
+  cancellationPolicy: Record<string, any> | null;
+  lastCheckedPrice?: number | null;
+  priceCheckRateKey?: string | null;
+  orchestrationError?: string | null;
+  retryCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Booking - Main booking record with joined data
+ * Maps to bookings table with contact and items joined
+ */
+export interface Booking {
+  id: string;
+  userId: string;
+  quoteId: string | null;
+  contactId: string;
+  bookingReference: string;
+  status: 'pending' | 'confirmed' | 'booked' | 'cancelled' | 'completed';
+  orchestrationStatus?: 'pending' | 'in_progress' | 'completed' | 'partial' | 'failed' | 'awaiting_payment';
+  totalAmount: number;
+  currency: string;
+  paymentStatus: 'pending' | 'partial' | 'paid' | 'refunded' | 'booked';
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  // Joined data
+  items: BookingItem[];
+  contact: {
+    id: string;
+    name: string;
+    email: string;
+    phone: string | null;
   };
 }

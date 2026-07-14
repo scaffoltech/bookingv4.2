@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { TravelQuote } from '@/types';
@@ -41,8 +41,21 @@ export function PaymentModal({ quote, isOpen, onClose, onSuccess }: PaymentModal
   const [priceChangeWarning, setPriceChangeWarning] = useState<PriceChangeWarning | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Approximation shown while the real server-computed amount loads.
+  const [depositAmount, setDepositAmount] = useState((quote.totalCost * 0.3).toFixed(2));
 
-  const depositAmount = (quote.totalCost * 0.30).toFixed(2);
+  useEffect(() => {
+    fetch('/api/payments/calculate-deposit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quoteId: quote.id }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) setDepositAmount(data.depositAmount.toFixed(2));
+      })
+      .catch(() => {});
+  }, [quote.id]);
 
   const initiatePayment = async () => {
     setIsLoading(true);
@@ -55,9 +68,6 @@ export function PaymentModal({ quote, isOpen, onClose, onSuccess }: PaymentModal
         body: JSON.stringify({
           quoteId: quote.id,
           paymentType,
-          customerId: quote.contactId,
-          customerEmail: 'customer@example.com', // TODO: Get from contact
-          quote, // Send full quote object
         }),
       });
 
@@ -260,8 +270,6 @@ function PaymentForm({ quote, quoteId, onSuccess, onError }: PaymentFormProps) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             paymentIntentId: paymentIntent.id,
-            quoteId,
-            quote, // Pass quote object
           }),
         });
 

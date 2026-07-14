@@ -3,7 +3,7 @@
 import { Calendar as BigCalendar, momentLocalizer, View } from 'react-big-calendar';
 import moment from 'moment';
 import { useState, useMemo, useEffect } from 'react';
-import { useQuoteStore } from '@/store/quote-store';
+import { useQuoteCompat } from '@/hooks/compat/useQuoteCompat';
 import { CalendarEvent, TravelQuote } from '@/types';
 import { getTravelItemColor } from '@/lib/utils';
 import { downloadICSFile } from '@/lib/calendar-export';
@@ -29,7 +29,7 @@ export function TimelineCalendar({
 }: TimelineCalendarProps) {
   const [view, setView] = useState<View>('week');
   const [date, setDate] = useState(new Date());
-  const { getCalendarEvents, quotes } = useQuoteStore();
+  const { getCalendarEvents, quotes } = useQuoteCompat();
 
   const events = useMemo(() => {
     const rawEvents = getCalendarEvents(contactId || undefined, statusFilters);

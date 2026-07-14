@@ -2,10 +2,10 @@
 
 import { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useInvoiceStore } from '@/store/invoice-store';
-import { useExpenseStore } from '@/store/expense-store';
-import { useCommissionStore } from '@/store/commission-store';
-import { useTransactionStore } from '@/store/transaction-store';
+import { useInvoiceCompat } from '@/hooks/compat/useInvoiceCompat';
+import { useExpenseCompat } from '@/hooks/compat/useExpenseCompat';
+import { useCommissionCompat } from '@/hooks/compat/useCommissionCompat';
+import { useTransactionCompat } from '@/hooks/compat/useTransactionCompat';
 import { DollarSign, FileText, TrendingUp, Users, TrendingDown, Percent, CreditCard } from 'lucide-react';
 import { RevenueTrendChart } from './RevenueTrendChart';
 import { ExpenseCategoryChart } from './ExpenseCategoryChart';
@@ -14,10 +14,10 @@ import { ActionItemsCard } from './ActionItemsCard';
 
 export function FinancialOverview() {
   // Select base state arrays
-  const invoices = useInvoiceStore((state) => state.invoices);
-  const expenses = useExpenseStore((state) => state.expenses);
-  const commissions = useCommissionStore((state) => state.commissions);
-  const transactions = useTransactionStore((state) => state.transactions);
+  const { invoices } = useInvoiceCompat();
+  const { expenses } = useExpenseCompat();
+  const { commissions } = useCommissionCompat();
+  const { transactions } = useTransactionCompat();
 
   // Compute derived values with useMemo
   const totalRevenue = useMemo(

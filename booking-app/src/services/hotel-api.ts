@@ -197,6 +197,7 @@ export class HotelService {
         taxes,
         fees
       },
+      rateKey: hotel.rateKey,
       // NEW: Add cost tracking fields
       supplierCost,     // What HotelBeds charges
       clientPrice,      // What client pays (with markup)

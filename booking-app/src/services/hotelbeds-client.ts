@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { getHotelBedsBaseUrl } from '@/lib/hotelbeds/auth';
 import {
   HotelBedsCredentials,
   HotelBedsSearchRequest,
@@ -11,7 +12,7 @@ import {
 export class HotelBedsClient {
   private apiKey: string;
   private secret: string;
-  private baseUrl: string = 'https://api.test.hotelbeds.com'; // Test environment
+  private baseUrl: string;
 
   // Common destination mappings for major cities
   private static destinationCodes: Record<string, string> = {
@@ -45,6 +46,7 @@ export class HotelBedsClient {
   constructor(credentials: HotelBedsCredentials) {
     this.apiKey = credentials.apiKey;
     this.secret = credentials.secret;
+    this.baseUrl = getHotelBedsBaseUrl();
   }
 
   // Convert city name to destination code

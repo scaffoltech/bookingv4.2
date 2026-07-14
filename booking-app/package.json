@@ -19,7 +19,10 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@stripe/react-stripe-js": "^5.0.0",
     "@stripe/stripe-js": "^8.0.0",
+    "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.110.3",
+    "@tanstack/react-query": "^5.101.2",
+    "@tanstack/react-query-devtools": "^5.101.2",
     "@types/react-big-calendar": "^1.16.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -41,6 +44,7 @@
     "stripe": "^19.0.0",
     "tailwind-merge": "^3.3.1",
     "xlsx": "^0.18.5",
+    "zod": "^4.4.3",
     "zustand": "^5.0.8"
   },
   "devDependencies": {

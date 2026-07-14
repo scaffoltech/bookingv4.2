@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { TravelQuote, TravelItem } from '@/types';
-import { useQuoteStore } from '@/store/quote-store';
+import { useQuoteCompat } from '@/hooks/compat/useQuoteCompat';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, getTravelItemColor } from '@/lib/utils';
@@ -34,13 +34,11 @@ interface GroupedItems {
 }
 
 export function TravelListView({ quote, onEditItem, onDeleteItem }: TravelListViewProps) {
-  const { updateItemInQuote } = useQuoteStore();
+  const { updateItemInQuote, addItemToQuote, getQuoteById } = useQuoteCompat();
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const [expandAll, setExpandAll] = useState(true);
 
-  const currentQuote = useQuoteStore(state => 
-    state.quotes.find(q => q.id === quote.id)
-  ) || quote;
+  const currentQuote = getQuoteById(quote.id) || quote;
 
   // Group items by date
   const groupedItems = useMemo(() => {
@@ -111,7 +109,7 @@ export function TravelListView({ quote, onEditItem, onDeleteItem }: TravelListVi
       ...item,
       name: `${item.name} (Copy)`,
     };
-    useQuoteStore.getState().addItemToQuote(quote.id, newItem);
+    addItemToQuote(quote.id, newItem);
   };
 
   const calculateDayTotal = (items: TravelItem[]) => {

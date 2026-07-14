@@ -1,22 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useQuoteStore } from '@/store/quote-store';
-import { useAuthStore } from '@/store/auth-store';
-import { Button } from '@/components/ui/button';
+import { useQuoteCompat } from '@/hooks/compat/useQuoteCompat';
+import { useAuth } from '@/components/auth/AuthProvider';
 
 export default function DebugPage() {
-  const { quotes, getQuotesByStatus } = useQuoteStore();
-  const { user, isAuthenticated, login } = useAuthStore();
+  const { quotes, getQuotesByStatus } = useQuoteCompat();
+  const { user, profile, org, loading } = useAuth();
+  const isAuthenticated = !loading && !!user;
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  const handleLogin = async () => {
-    await login('tejtandon@gmail.com', 'password');
-  };
 
   if (!mounted) {
     return <div>Loading...</div>;
@@ -30,12 +26,9 @@ export default function DebugPage() {
       <div className="mb-8 p-6 bg-gray-100 rounded-lg">
         <h2 className="text-xl font-bold mb-4">Authentication Status</h2>
         <p><strong>Is Authenticated:</strong> {isAuthenticated ? 'Yes' : 'No'}</p>
-        <p><strong>User:</strong> {user ? JSON.stringify(user, null, 2) : 'None'}</p>
-        {!isAuthenticated && (
-          <Button onClick={handleLogin} className="mt-4">
-            Login as tejtandon@gmail.com
-          </Button>
-        )}
+        <p><strong>User:</strong> {user ? user.email : 'None'}</p>
+        <p><strong>Profile:</strong> {profile ? JSON.stringify(profile, null, 2) : 'None'}</p>
+        <p><strong>Org:</strong> {org ? `${org.name} (${org.id})` : 'None'}</p>
       </div>
 
       {/* Quote Store Data */}

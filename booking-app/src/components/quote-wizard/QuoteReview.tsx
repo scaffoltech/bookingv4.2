@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { TravelQuote, Contact } from '@/types';
-import { useQuoteStore } from '@/store/quote-store';
+import { useQuoteCompat } from '@/hooks/compat/useQuoteCompat';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, getContactDisplayName, formatDate, detectDestinationMismatches, DestinationMismatch } from '@/lib/utils';
 import { Plane, Hotel, MapPin, Car, FileText, Send, AlertTriangle, X } from 'lucide-react';
@@ -14,13 +14,11 @@ interface QuoteReviewProps {
 }
 
 export function QuoteReview({ quote, contact, onComplete }: QuoteReviewProps) {
-  const { updateQuote } = useQuoteStore();
+  const { updateQuote, getQuoteById } = useQuoteCompat();
   const [showMismatchModal, setShowMismatchModal] = useState(false);
   const [detectedMismatches, setDetectedMismatches] = useState<DestinationMismatch[]>([]);
 
-  const currentQuote = useQuoteStore(state => 
-    state.quotes.find(q => q.id === quote.id)
-  ) || quote;
+  const currentQuote = getQuoteById(quote.id) || quote;
 
   const handleSendQuote = () => {
     // Check for destination mismatches before sending

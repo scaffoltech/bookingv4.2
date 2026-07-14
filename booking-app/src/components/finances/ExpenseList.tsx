@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useExpenseStore } from '@/store/expense-store';
-import { useContactStore } from '@/store/contact-store';
-import { useQuoteStore } from '@/store/quote-store';
+import { useExpenseCompat } from '@/hooks/compat/useExpenseCompat';
+import { useContactCompat } from '@/hooks/compat/useContactCompat';
+import { useQuoteCompat } from '@/hooks/compat/useQuoteCompat';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -32,11 +32,9 @@ export function ExpenseList() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
-  const allExpenses = useExpenseStore((state) => state.expenses);
-  const searchExpenses = useExpenseStore((state) => state.searchExpenses);
-  const contacts = useContactStore((state) => state.contacts);
-  const { getQuoteById } = useQuoteStore();
-  const { getContactById } = useContactStore();
+  const { expenses: allExpenses, searchExpenses } = useExpenseCompat();
+  const { contacts, getContactById } = useContactCompat();
+  const { getQuoteById } = useQuoteCompat();
 
   // Create supplier lookup map
   const supplierMap = useMemo(() => {
