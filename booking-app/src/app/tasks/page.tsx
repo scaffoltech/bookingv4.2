@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { useTaskStore } from '@/store/task-store';
 import { TaskStatus, TaskPriority, TaskType } from '@/types/task';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { MainLayout } from '@/components/layout/MainLayout';
 import {
   CheckCircle2,
@@ -93,16 +94,15 @@ function TasksContent() {
     }
   };
 
-  const getPriorityColor = (priority: TaskPriority) => {
+  const getPriorityVariant = (priority: TaskPriority): BadgeProps['variant'] => {
     switch (priority) {
       case 'urgent':
-        return 'bg-red-100 text-red-800 border-red-300';
+        return 'destructive';
       case 'high':
-        return 'bg-orange-100 text-orange-800 border-orange-300';
       case 'medium':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+        return 'warning';
       case 'low':
-        return 'bg-green-100 text-green-800 border-green-300';
+        return 'success';
     }
   };
 
@@ -238,13 +238,9 @@ function TasksContent() {
                       </div>
 
                       {/* Priority Badge */}
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold border ${getPriorityColor(
-                          task.priority
-                        )}`}
-                      >
+                      <Badge variant={getPriorityVariant(task.priority)}>
                         {task.priority.toUpperCase()}
-                      </span>
+                      </Badge>
                     </div>
 
                     {/* Task Meta */}

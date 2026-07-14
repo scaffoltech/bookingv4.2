@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { DollarSign, FileText, TrendingUp, Users, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { FinancialTransaction } from '@/types/transaction';
 
@@ -50,16 +50,16 @@ export function RecentActivityFeed({ transactions, limit = 10 }: RecentActivityF
     return labels[type] || type;
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusVariant = (status: string): BadgeProps['variant'] => {
     switch (status) {
       case 'completed':
-        return 'bg-green-100 text-green-800';
+        return 'success';
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'warning';
       case 'failed':
-        return 'bg-red-100 text-red-800';
+        return 'destructive';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'secondary';
     }
   };
 
@@ -98,7 +98,7 @@ export function RecentActivityFeed({ transactions, limit = 10 }: RecentActivityF
                   <span className="font-medium text-sm truncate">
                     {getTypeLabel(transaction.type)}
                   </span>
-                  <Badge className={`text-xs ${getStatusColor(transaction.status)}`}>
+                  <Badge variant={getStatusVariant(transaction.status)} className="text-xs">
                     {transaction.status}
                   </Badge>
                 </div>

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { TravelItem } from '@/types';
 import { formatCurrency } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 import moment from 'moment';
 
 interface QuickEditPopoverProps {
@@ -157,9 +158,9 @@ export function QuickEditPopover({
             {isApiItem ? 'Hotel Details' : 'Quick Edit'}
           </h4>
           {isApiItem && (
-            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded uppercase font-medium">
+            <Badge variant="secondary" className="uppercase">
               {apiProvider || 'API'}
-            </span>
+            </Badge>
           )}
         </div>
         <ModernButton variant="ghost" size="sm" onClick={onCancel}>

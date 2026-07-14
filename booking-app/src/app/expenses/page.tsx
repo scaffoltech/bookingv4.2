@@ -368,12 +368,12 @@ export default function ExpensesPage() {
                           </td>
                           <td className="py-3 px-4">
                             {expense.approvedBy ? (
-                              <Badge className="bg-green-100 text-green-800 flex items-center gap-1 w-fit">
+                              <Badge variant="success" className="flex items-center gap-1 w-fit">
                                 <CheckCircle className="w-3 h-3" />
                                 Approved
                               </Badge>
                             ) : (
-                              <Badge className="bg-yellow-100 text-yellow-800 flex items-center gap-1 w-fit">
+                              <Badge variant="warning" className="flex items-center gap-1 w-fit">
                                 <Clock className="w-3 h-3" />
                                 Pending
                               </Badge>

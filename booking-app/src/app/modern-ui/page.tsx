@@ -4,6 +4,7 @@ import { ModernCard, ModernCardHeader, ModernCardTitle, ModernCardContent } from
 import { ModernButton } from "@/components/ui/modern-button"
 import { AnimatedBorder } from "@/components/ui/animated-border"
 import { Marquee } from "@/components/ui/marquee"
+import { Badge } from "@/components/ui/badge"
 import { DarkModeToggle } from "@/components/ui/dark-mode-toggle"
 import { Star, Heart, Zap, Globe, Calendar, Users } from "lucide-react"
 
@@ -175,21 +176,21 @@ export default function ModernUIPage() {
               </h4>
               <Marquee reverse pauseOnHover className="[mask-image:linear-gradient(to_right,transparent,white_20%,white_80%,transparent)]">
                 <div className="flex gap-8">
-                  <span className="bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap">
+                  <Badge className="px-3 py-1 text-sm whitespace-nowrap">
                     Dark Mode Support
-                  </span>
-                  <span className="bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200 px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap">
+                  </Badge>
+                  <Badge variant="success" className="px-3 py-1 text-sm whitespace-nowrap">
                     Responsive Design
-                  </span>
-                  <span className="bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-200 px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap">
+                  </Badge>
+                  <Badge variant="secondary" className="px-3 py-1 text-sm whitespace-nowrap">
                     Modern Components
-                  </span>
-                  <span className="bg-orange-100 dark:bg-orange-900/20 text-orange-800 dark:text-orange-200 px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap">
+                  </Badge>
+                  <Badge variant="warning" className="px-3 py-1 text-sm whitespace-nowrap">
                     Clean Design
-                  </span>
-                  <span className="bg-pink-100 dark:bg-pink-900/20 text-pink-800 dark:text-pink-200 px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap">
+                  </Badge>
+                  <Badge variant="outline" className="px-3 py-1 text-sm whitespace-nowrap">
                     No Glass Effects
-                  </span>
+                  </Badge>
                 </div>
               </Marquee>
             </div>

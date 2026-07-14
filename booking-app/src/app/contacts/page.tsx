@@ -293,7 +293,7 @@ export default function ContactsPage() {
                     </div>
                     <div className="text-right">
                       <div className="font-semibold text-green-600">{formatCurrency(invoice.total)}</div>
-                      <Badge className="bg-green-100 text-green-800 text-xs">
+                      <Badge variant="success" className="text-xs">
                         Paid
                       </Badge>
                     </div>

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { MainLayout } from '@/components/layout/MainLayout';
+import { Badge } from '@/components/ui/badge';
 import { useRateStore } from '@/store/rate-store';
 import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle, Sparkles, Eye, Search, Trash2, Database, Hotel, MapPin, Car, Edit2, X } from 'lucide-react';
 
@@ -627,9 +628,9 @@ Local Supplier,Beach Resort Cancun,BRCMX003,Ocean View Suite,2025-03-10,2025-03-
 
                       {/* Source */}
                       <td className="px-4 py-3 text-center">
-                        <span className="inline-block px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700">
+                        <Badge variant="secondary">
                           {rate.source.replace('_', ' ')}
-                        </span>
+                        </Badge>
                       </td>
 
                       {/* Actions */}

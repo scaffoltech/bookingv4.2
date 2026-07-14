@@ -126,7 +126,7 @@ export function TravelListView({ quote, onEditItem, onDeleteItem }: TravelListVi
           <h3 className="text-lg font-semibold text-gray-900">
             Timeline List View
           </h3>
-          <Badge className="bg-blue-100 text-blue-800">
+          <Badge variant="secondary">
             {currentQuote.items.length} items
           </Badge>
         </div>
@@ -192,7 +192,7 @@ export function TravelListView({ quote, onEditItem, onDeleteItem }: TravelListVi
                         {formattedDate}
                       </div>
                     </div>
-                    <Badge className="bg-blue-100 text-blue-800">
+                    <Badge variant="secondary">
                       {items.length} {items.length === 1 ? 'item' : 'items'}
                     </Badge>
                   </div>

@@ -7,6 +7,7 @@ import { formatCurrency } from '@/lib/utils';
 import { DollarSign, Calendar, User, FileText, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 export function SupplierPaymentsDue() {
   const { expenses, updateExpense } = useExpenseStore();
@@ -146,9 +147,9 @@ export function SupplierPaymentsDue() {
                               Due: {expense.date}
                             </span>
                             {expense.subcategory && (
-                              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                              <Badge variant="secondary">
                                 {expense.subcategory}
-                              </span>
+                              </Badge>
                             )}
                           </div>
                         </div>

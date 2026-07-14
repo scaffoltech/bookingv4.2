@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -92,18 +92,18 @@ export default function CommissionsPage() {
     }
   };
 
-  const getStatusColor = (status: CommissionStatus) => {
+  const getStatusVariant = (status: CommissionStatus): BadgeProps['variant'] => {
     switch (status) {
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'warning';
       case 'approved':
-        return 'bg-blue-100 text-blue-800';
+        return 'default';
       case 'paid':
-        return 'bg-green-100 text-green-800';
+        return 'success';
       case 'disputed':
-        return 'bg-red-100 text-red-800';
+        return 'destructive';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'secondary';
     }
   };
 
@@ -399,7 +399,7 @@ export default function CommissionsPage() {
                             {formatDate(commission.earnedDate)}
                           </td>
                           <td className="py-3 px-4">
-                            <Badge className={`${getStatusColor(commission.status)} flex items-center gap-1 w-fit`}>
+                            <Badge variant={getStatusVariant(commission.status)} className="flex items-center gap-1 w-fit">
                               {getStatusIcon(commission.status)}
                               {commission.status.charAt(0).toUpperCase() + commission.status.slice(1)}
                             </Badge>

@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { Invoice } from '@/types/financial';
+import { badgeVariants } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface InvoiceTemplateProps {
   invoice: Invoice;
@@ -71,12 +73,14 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({
             <p><span className="font-semibold">Issue Date:</span> {formatDate(invoice.issueDate)}</p>
             <p><span className="font-semibold">Due Date:</span> {formatDate(invoice.dueDate)}</p>
             <p><span className="font-semibold">Status:</span>
-              <span className={`ml-1 px-2 py-1 rounded text-xs font-semibold ${
-                invoice.status === 'paid' ? 'bg-green-100 text-green-800' :
-                invoice.status === 'sent' ? 'bg-blue-100 text-blue-800' :
-                invoice.status === 'overdue' ? 'bg-red-100 text-red-800' :
-                'bg-gray-100 text-gray-800'
-              }`}>
+              {/* span (not Badge) — Badge renders a div, invalid inside <p> */}
+              <span className={cn(badgeVariants({
+                variant:
+                  invoice.status === 'paid' ? 'success' :
+                  invoice.status === 'sent' ? 'default' :
+                  invoice.status === 'overdue' ? 'destructive' :
+                  'secondary'
+              }), 'ml-1')}>
                 {invoice.status.toUpperCase()}
               </span>
             </p>

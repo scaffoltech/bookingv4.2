@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Badge, type BadgeProps } from '@/components/ui/badge';
 import {
   CheckCircle,
   Plane,
@@ -32,16 +32,16 @@ export function BookingConfirmationComponent({
 }: BookingConfirmationProps) {
   const [isDownloading, setIsDownloading] = useState(false);
 
-  const getStatusColor = (status: string) => {
+  const getStatusVariant = (status: string): BadgeProps['variant'] => {
     switch (status) {
       case 'confirmed':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'success';
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        return 'warning';
       case 'cancelled':
-        return 'bg-red-100 text-red-800 border-red-200';
+        return 'destructive';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'secondary';
     }
   };
 
@@ -108,14 +108,13 @@ export function BookingConfirmationComponent({
         </div>
 
         <div className="flex justify-center space-x-4">
-          <Badge className={`px-4 py-2 text-sm font-medium ${getStatusColor(confirmation.status)}`}>
+          <Badge variant={getStatusVariant(confirmation.status)} className="px-4 py-2 text-sm font-medium">
             {confirmation.status.charAt(0).toUpperCase() + confirmation.status.slice(1)}
           </Badge>
-          <Badge className={`px-4 py-2 text-sm font-medium ${
-            confirmation.paymentStatus === 'paid' 
-              ? 'bg-blue-100 text-blue-800 border-blue-200'
-              : 'bg-gray-100 text-gray-800 border-gray-200'
-          }`}>
+          <Badge
+            variant={confirmation.paymentStatus === 'paid' ? 'success' : 'secondary'}
+            className="px-4 py-2 text-sm font-medium"
+          >
             Payment {confirmation.paymentStatus}
           </Badge>
         </div>

@@ -21,6 +21,7 @@ import { TravelListView } from './TravelListView';
 import { FilterControls } from './FilterControls';
 import { TimelineNavigation } from './TimelineNavigation';
 import { ContextMenu, ContextMenuItem } from '@/components/ui/context-menu';
+import { Badge } from '@/components/ui/badge';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 
@@ -635,9 +636,9 @@ export function TravelItems({ quote, onComplete }: TravelItemsProps) {
         <div className="fixed bottom-4 left-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-40">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-1 rounded-full">
+              <Badge variant="secondary" className="text-sm px-2.5 py-1">
                 {currentQuote.items.length} item{currentQuote.items.length !== 1 ? 's' : ''}
-              </div>
+              </Badge>
               <span className="text-gray-600 text-sm">added to quote</span>
             </div>
             <div className="flex items-center space-x-3">

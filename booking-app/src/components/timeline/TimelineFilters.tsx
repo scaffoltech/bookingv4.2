@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { X, Filter } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { getContactDisplayName } from '@/lib/utils';
 
 interface TimelineFiltersProps {
@@ -70,9 +71,9 @@ export function TimelineFilters({
           <Filter className="w-5 h-5 text-gray-600" />
           <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
           {hasActiveFilters && (
-            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+            <Badge>
               {[selectedContactId ? 1 : 0, 4 - selectedStatuses.length].filter(n => n > 0).reduce((a, b) => a + b, 0)} active
-            </span>
+            </Badge>
           )}
           {itemCount !== undefined && (
             <span className="text-sm text-gray-600">

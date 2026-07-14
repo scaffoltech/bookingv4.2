@@ -192,13 +192,13 @@ export function ExpenseList() {
                     </TableCell>
                     <TableCell>
                       {expense.status === 'paid' ? (
-                        <Badge className="bg-green-100 text-green-800">Paid</Badge>
+                        <Badge variant="success">Paid</Badge>
                       ) : expense.status === 'pending' ? (
-                        <Badge className="bg-orange-100 text-orange-800">Pending</Badge>
+                        <Badge variant="warning">Pending</Badge>
                       ) : expense.approvedBy ? (
-                        <Badge className="bg-green-100 text-green-800">Approved</Badge>
+                        <Badge variant="success">Approved</Badge>
                       ) : (
-                        <Badge className="bg-yellow-100 text-yellow-800">Pending Approval</Badge>
+                        <Badge variant="warning">Pending Approval</Badge>
                       )}
                     </TableCell>
                   </TableRow>

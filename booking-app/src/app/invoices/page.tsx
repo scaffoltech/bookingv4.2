@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -169,22 +169,18 @@ export default function InvoicesPage() {
     }
   };
 
-  const getStatusColor = (status: InvoiceStatus) => {
+  const getStatusVariant = (status: InvoiceStatus): BadgeProps['variant'] => {
     switch (status) {
-      case 'draft':
-        return 'bg-gray-100 text-gray-800';
       case 'sent':
-        return 'bg-blue-100 text-blue-800';
+        return 'default';
       case 'paid':
-        return 'bg-green-100 text-green-800';
+        return 'success';
       case 'overdue':
-        return 'bg-red-100 text-red-800';
-      case 'cancelled':
-        return 'bg-gray-100 text-gray-800';
+        return 'destructive';
       case 'partial':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'warning';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'secondary';
     }
   };
 
@@ -374,7 +370,7 @@ export default function InvoicesPage() {
                             )}
                           </td>
                           <td className="py-3 px-4">
-                            <Badge className={`${getStatusColor(invoice.status)} flex items-center gap-1 w-fit`}>
+                            <Badge variant={getStatusVariant(invoice.status)} className="flex items-center gap-1 w-fit">
                               {getStatusIcon(invoice.status)}
                               {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
                             </Badge>

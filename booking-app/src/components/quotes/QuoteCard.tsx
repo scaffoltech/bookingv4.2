@@ -5,7 +5,7 @@ import { useContactStore } from '@/store/contact-store';
 import { useQuoteStore } from '@/store/quote-store';
 import { ModernButton } from '@/components/ui/modern-button';
 import { ModernCard } from '@/components/ui/modern-card';
-import { Badge } from '@/components/ui/badge';
+import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { formatCurrency, getContactDisplayName } from '@/lib/utils';
 import { 
   Calendar, 
@@ -54,13 +54,12 @@ export function QuoteCard({ quote, onDelete, onDuplicate, onStatusChange }: Quot
   
   const contact = getContactById(quote.contactId);
   
-  const getStatusColor = (status: TravelQuote['status']) => {
+  const getStatusVariant = (status: TravelQuote['status']): BadgeProps['variant'] => {
     switch (status) {
-      case 'draft': return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700';
-      case 'sent': return 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/30';
-      case 'accepted': return 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/30';
-      case 'rejected': return 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/30';
-      default: return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300';
+      case 'sent': return 'default';
+      case 'accepted': return 'success';
+      case 'rejected': return 'destructive';
+      default: return 'secondary';
     }
   };
 
@@ -157,7 +156,7 @@ export function QuoteCard({ quote, onDelete, onDuplicate, onStatusChange }: Quot
         </div>
         
         <div className="flex items-center space-x-2">
-          <Badge className={`${getStatusColor(quote.status)} rounded-full px-3 py-1 text-xs font-medium`}>
+          <Badge variant={getStatusVariant(quote.status)}>
             {quote.status.charAt(0).toUpperCase() + quote.status.slice(1)}
           </Badge>
           

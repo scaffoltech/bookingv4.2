@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ModernButton } from '@/components/ui/modern-button';
 import { ModernCard, ModernCardContent } from '@/components/ui/modern-card';
 import { DarkModeToggle } from '@/components/ui/dark-mode-toggle';
+import { Badge } from '@/components/ui/badge';
 import {
   Calendar,
   Users,
@@ -31,7 +32,7 @@ export default function Home() {
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
               <span className="text-xl font-bold text-gray-900 dark:text-gray-100">BookingGPT</span>
-              <span className="text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">v4.2</span>
+              <Badge variant="secondary">v4.2</Badge>
             </div>
 
             <div className="hidden md:flex items-center space-x-8">

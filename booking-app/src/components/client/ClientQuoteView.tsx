@@ -225,13 +225,12 @@ export function ClientQuoteView({
             <div className="text-right space-y-2">
               <div className="flex flex-col items-end space-y-2">
                 <Badge
-                  className={`${
-                    quoteStatus === 'sent' ? 'bg-blue-100 text-blue-800' :
-                    quoteStatus === 'confirmed' ? 'bg-green-100 text-green-800' :
-                    quoteStatus === 'accepted' ? 'bg-green-100 text-green-800' :
-                    quoteStatus === 'rejected' ? 'bg-red-100 text-red-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}
+                  variant={
+                    quoteStatus === 'sent' ? 'default' :
+                    quoteStatus === 'confirmed' || quoteStatus === 'accepted' ? 'success' :
+                    quoteStatus === 'rejected' ? 'destructive' :
+                    'secondary'
+                  }
                 >
                   {quoteStatus === 'sent' ? 'Pending Response' :
                    quoteStatus === 'confirmed' ? 'Confirmed' :

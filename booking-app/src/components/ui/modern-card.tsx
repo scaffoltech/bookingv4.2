@@ -1,31 +1,32 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
+import { Card } from "./card"
+
+// ponytail: compatibility wrapper over the design-system Card — migrate
+// consumers to Card/CardHeader/CardContent directly, then delete this file.
+const variantExtras = {
+  default: "",
+  elevated: "shadow-lg hover:shadow-xl transition-shadow duration-300",
+  outline: "border-2 bg-transparent dark:bg-transparent hover:bg-gray-50 dark:hover:bg-gray-900/50 shadow-none",
+  ghost: "bg-gray-50 dark:bg-gray-800/50 border-0 shadow-none hover:bg-gray-100 dark:hover:bg-gray-800",
+} as const
 
 const ModernCard = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & {
-    variant?: "default" | "elevated" | "outline" | "ghost"
+    variant?: keyof typeof variantExtras
   }
->(({ className, variant = "default", ...props }, ref) => {
-  const variants = {
-    default: "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm",
-    elevated: "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-lg hover:shadow-xl transition-shadow duration-300",
-    outline: "border-2 border-gray-200 dark:border-gray-700 bg-transparent hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors duration-200",
-    ghost: "bg-gray-50 dark:bg-gray-800/50 border-0 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200"
-  }
-
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        "rounded-xl p-6 transition-all duration-200",
-        variants[variant],
-        className
-      )}
-      {...props}
-    />
-  )
-})
+>(({ className, variant = "default", ...props }, ref) => (
+  <Card
+    ref={ref}
+    className={cn(
+      "p-6 dark:bg-gray-900 dark:border-gray-800 dark:text-gray-100",
+      variantExtras[variant],
+      className
+    )}
+    {...props}
+  />
+))
 ModernCard.displayName = "ModernCard"
 
 const ModernCardHeader = React.forwardRef<

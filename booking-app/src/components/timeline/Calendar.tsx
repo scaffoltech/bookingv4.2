@@ -8,6 +8,7 @@ import { CalendarEvent, TravelQuote } from '@/types';
 import { getTravelItemColor } from '@/lib/utils';
 import { downloadICSFile } from '@/lib/calendar-export';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Download, CalendarPlus, Filter } from 'lucide-react';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
@@ -125,9 +126,9 @@ export function TimelineCalendar({
         </div>
         <span className="truncate text-xs">{event.title}</span>
         {isApiItem && (
-          <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded uppercase font-medium">
+          <Badge variant="secondary" className="text-[10px] px-1 py-0 uppercase">
             API
-          </span>
+          </Badge>
         )}
       </div>
     );
