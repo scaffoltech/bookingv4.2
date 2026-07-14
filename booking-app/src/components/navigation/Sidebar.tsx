@@ -76,6 +76,12 @@ export function Sidebar() {
       active: pathname?.startsWith('/admin/finances')
     },
     {
+      href: '/assistant',
+      label: 'AI Assistant',
+      icon: Sparkles,
+      active: pathname?.startsWith('/assistant')
+    },
+    {
       href: '/tasks',
       label: 'Tasks',
       icon: ClipboardList,

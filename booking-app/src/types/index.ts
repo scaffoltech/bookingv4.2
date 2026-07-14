@@ -155,6 +155,13 @@ export interface CalendarEvent {
   };
 }
 
+// AI itinerary chat: mutations the /api/chat route returns for the client to apply
+export type ChatAction =
+  | { type: 'create_quote'; title: string; contactId?: string; customerName: string; startDate: string; endDate: string }
+  | { type: 'add_item'; item: Omit<TravelItem, 'id'> }
+  | { type: 'update_item'; itemId: string; updates: Partial<TravelItem> }
+  | { type: 'remove_item'; itemId: string };
+
 // Export financial types
 export * from './financial';
 export * from './booking';
